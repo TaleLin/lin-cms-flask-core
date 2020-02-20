@@ -28,7 +28,7 @@ setuptools.setup(
     platforms='any',
     install_requires=[
       'WTForms==2.2.1',
-      'Werkzeug==0.14.1',
+      'Werkzeug==0.15.3',
       'Flask==1.0.2',
       'SQLAlchemy==1.2.11',
       'Flask_JWT_Extended==3.12.1',
