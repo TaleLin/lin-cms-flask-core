@@ -19,6 +19,9 @@ class Form(WTForm):
     def __init__(self):
         data = request.get_json(silent=True)
         args = request.args.to_dict()
+        illegal_params = set(args.keys()) & {"formdata", "obj", "prefix", "data", 'meta'}
+        if illegal_params:
+            raise ParameterException(f"非法参数: {illegal_params}")
         super(Form, self).__init__(data=data, **args)
 
     def validate_for_api(self):
