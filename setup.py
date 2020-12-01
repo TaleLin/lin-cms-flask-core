@@ -35,7 +35,7 @@ setuptools.setup(
         'tablib==2.0.0'
     ],
     classifiers=[
-        'Development Status :: 2 - Beta',
+        'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
