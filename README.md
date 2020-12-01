@@ -1,16 +1,18 @@
 <h1 align="center">
-  <a href="http://doc.cms.7yue.pro/">
-  <img src="http://doc.cms.7yue.pro/left-logo.png" width="250"/></a>
+  <a href="http://doc.cms.talelin.com/">
+  <img src="http://doc.cms.talelin.com/left-logo.png" width="250"/></a>
   <br>
   Lin-CMS-Flask-Core
 </h1>
 
-<h4 align="center">一个简单易用的CMS后端项目 | <a href="http://doc.cms.7yue.pro/" target="_blank">Lin-CMS-Flask的核心库</a></h4>
+<h4 align="center">一个简单易用的CMS后端项目 | <a href="http://doc.cms.talelin.com/" target="_blank">Lin-CMS-Flask的核心库</a></h4>
 
 <p align="center">
   <a href="http://flask.pocoo.org/docs/1.0/" rel="nofollow">
-  <img src="https://camo.githubusercontent.com/a9ed6d40bacc7934b206ddcb6450f9cdec89f1a0/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f666c61736b2d253344253344312e302e322d79656c6c6f772e737667" alt="flask version" data-canonical-src="https://camo.githubusercontent.com/a9ed6d40bacc7934b206ddcb6450f9cdec89f1a0/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f666c61736b2d253344253344312e302e322d79656c6c6f772e737667" style="max-width:100%;"></a>
-  <a href="http://doc.cms.7yue.pro/" rel="nofollow"><img src="https://img.shields.io/badge/license-MIT-lightgrey.svg" alt="LISENCE" data-canonical-src="https://img.shields.io/badge/license-MIT-lightgrey.svg" style="max-width:100%;"></a>
+  <img src="https://img.shields.io/badge/Flask-1.1.2-brightgreen" alt="Flask version" 
+  data-canonical-src="https://img.shields.io/badge/Flask-1.1.2-brightgreen"
+  style="max-width:100%;"></a>
+  <a href="http://doc.cms.talelin.com/" rel="nofollow"><img src="https://img.shields.io/badge/license-MIT-lightgrey.svg" alt="LISENCE" data-canonical-src="https://img.shields.io/badge/license-MIT-lightgrey.svg" style="max-width:100%;"></a>
 </p>
 
 <blockquote align="center">
@@ -35,11 +37,11 @@ Lin-CMS 是林间有风团队经过大量项目实践所提炼出的一套**内�
 
 ### 文档地址
 
-[http://doc.cms.7yue.pro/](http://doc.cms.7yue.pro/)
+[http://doc.cms.talelin.com/](http://doc.cms.talelin.com/)
 
 ### 线上 demo
 
-[http://face.cms.7yue.pro/](http://face.cms.7yue.pro/)
+[http://face.cms.talelin.com/](http://face.cms.talelin.com/)
 
 ### QQ 交流群
 
