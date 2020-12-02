@@ -178,7 +178,8 @@ class GroupInterface(InfoCrud):
 
 class GroupPermissionInterface(BaseCrud):
     __tablename__ = "lin_group_permission"
-    __table_args__ = (Index("group_id_permission_id", "group_id", "permission_id"),)
+    __table_args__ = (Index("group_id_permission_id",
+                            "group_id", "permission_id"),)
 
     id = Column(Integer(), primary_key=True)
     group_id = Column(Integer(), nullable=False, comment="分组id")
@@ -187,6 +188,7 @@ class GroupPermissionInterface(BaseCrud):
 
 class PermissionInterface(InfoCrud):
     __tablename__ = "lin_permission"
+    __table_args__ = (Index("name", "module", unique=True),)
 
     id = Column(Integer(), primary_key=True)
     name = Column(String(60), nullable=False, comment="权限名称，例如：访问首页")

@@ -144,7 +144,7 @@ class Uploader(object):
         store_dir = self._store_dir
         return (
             os.path.join(store_dir, uuid_filename),
-            format_day + "/" + uuid_filename,
+            format_day + os.path.sep + uuid_filename,
             uuid_filename,
         )
 
@@ -152,7 +152,7 @@ class Uploader(object):
         if not os.path.isabs(self._store_dir):
             self._store_dir = os.path.abspath(self._store_dir)
         # mkdir by YYYY/MM/DD
-        self._store_dir += "/" + self.__get_format_day()
+        self._store_dir += os.path.sep + self.__get_format_day()
         if not os.path.exists(self._store_dir):
             os.makedirs(self._store_dir)
 
@@ -195,7 +195,8 @@ class Uploader(object):
             for single in self._file_storage:
                 if self._get_size(single) > self._single_limit:
                     raise FileTooLarge(
-                        single.filename + "大小不能超过" + str(self._single_limit) + "字节"
+                        single.filename + "大小不能超过" +
+                        str(self._single_limit) + "字节"
                     )
                 total_size += self._get_size(single)
             if total_size > self._total_limit:
