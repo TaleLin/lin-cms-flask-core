@@ -165,7 +165,7 @@ class Lin(object):
         group_permission_model=None,  # group permission 多对多关联模型
         user_group_model=None,  # user group 多对多关联模型
         jsonencoder=None,  # 序列化器
-        create_all=False,  # 是否创建所有数据库表, default true
+        create_all=False,  # 是否创建所有数据库表, default False
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
@@ -259,9 +259,8 @@ class Lin(object):
         create_all and self._enable_create_all(app)
         jwt.init_app(app)
         mount and self.mount(app)
-        # 挂载后才能获取代码中的权限, debugger进程跳过权限初始化
-        os.environ.get(
-            "WERKZEUG_RUN_MAIN") == "true" and self.sync_permissions(app)
+        # 挂载后才能获取代码中的权限
+        self.sync_permissions(app)
         handle and self.handle_error(app)
         syslogger and SysLogger(app)
 
