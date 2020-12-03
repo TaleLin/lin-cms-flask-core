@@ -165,7 +165,7 @@ class Lin(object):
         group_permission_model=None,  # group permission 多对多关联模型
         user_group_model=None,  # user group 多对多关联模型
         jsonencoder=None,  # 序列化器
-        create_all=False,  # 是否创建所有数据库表, default False
+        sync_permissions=True,  # create db table if not exist and sync permissions, default True
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
@@ -197,7 +197,7 @@ class Lin(object):
         group_permission_model=None,
         user_group_model=None,
         jsonencoder=None,
-        create_all=False,
+        sync_permissions=True,
         mount=True,
         handle=True,
         syslogger=True,
@@ -256,11 +256,10 @@ class Lin(object):
         )
         self.app.extensions["manager"] = self.manager
         db.init_app(app)
-        create_all and self._enable_create_all(app)
         jwt.init_app(app)
         mount and self.mount(app)
         # 挂载后才能获取代码中的权限
-        self.sync_permissions(app)
+        sync_permissions and self.sync_permissions(app)
         handle and self.handle_error(app)
         syslogger and SysLogger(app)
 
@@ -310,7 +309,3 @@ class Lin(object):
     def enable_auto_jsonify(self, app):
         app.json_encoder = self.jsonencoder or JSONEncoder
         app.make_response = auto_response(app.make_response)
-
-    def _enable_create_all(self, app):
-        with app.app_context():
-            db.create_all()
