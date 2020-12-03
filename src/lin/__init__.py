@@ -181,7 +181,7 @@ class Lin(object):
                 group_permission_model,
                 user_group_model,
                 jsonencoder,
-                create_all,
+                sync_permissions,
                 mount,
                 handle,
                 syslogger,
