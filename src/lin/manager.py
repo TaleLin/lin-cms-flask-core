@@ -137,7 +137,8 @@ class Manager(object):
             return plugin.services.get(name)
 
     def sync_permissions(self):
-        try:
+        with db.auto_commit():
+            db.create_all()
             permissions = self.permission_model.get(one=False)
             # 新增的权限记录
             new_added_permissions = list()
@@ -171,12 +172,9 @@ class Manager(object):
                     permission.module = module
                     permission.mount = mount
                     new_added_permissions.append(permission)
-            with db.auto_commit():
-                _sync_permissions(
-                    self, new_added_permissions, unmounted_ids, mounted_ids, deleted_ids
-                )
-        except DatabaseError:
-            pass
+            _sync_permissions(
+                self, new_added_permissions, unmounted_ids, mounted_ids, deleted_ids
+            )
 
 
 def _sync_permissions(
