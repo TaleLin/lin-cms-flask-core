@@ -154,8 +154,9 @@ class Manager(object):
                 db_existed = False
                 for permission in permissions:
                     if permission.name == name and permission.module == module:
-                        # 此条记录存在，不会被删除
-                        deleted_ids.remove(permission.id)
+                        # 此条记录存在,从待删除列表中移除,不会被删除
+                        if permission.id in deleted_ids:
+                            deleted_ids.remove(permission.id)
                         # 此条记录存在，不需要添加到权限表
                         db_existed = True
                         # 判定mount的变动情况，将记录id添加到对应的列表中
