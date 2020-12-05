@@ -132,11 +132,8 @@ class JSONEncoder(_JSONEncoder):
             return o.value
         if isinstance(o, (RecordCollection, Record)):
             return o.as_dict()
-        if isinstance(o, (int, list, set)):
+        if isinstance(o, (int, list, set, tuple)):
             return json.dumps(o, cls=JSONEncoder)
-        if isinstance(o, tuple):
-            if len(o) == 0 or len(o) > 0 and not isinstance(o[0], Response):
-                return json.dumps(o, cls=JSONEncoder)
         return JSONEncoder.default(self, o)
 
 
@@ -149,6 +146,10 @@ def auto_response(func):
             o = jsonify(o)
         elif isinstance(o, (Enum, int, list, set)):
             o = json.dumps(o)
+        elif isinstance(o, tuple) and not isinstance(o[0], Response):
+            oc = list(o)
+            oc[0] = json.dumps(o[0])
+            o = tuple(oc)
         return func(o)
 
     return make_lin_response
