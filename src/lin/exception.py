@@ -167,12 +167,6 @@ class Forbidden(APIException):
     message_code = 10070
 
 
-class RefreshFailed(APIException):
-    code = 401
-    message = "Get Refresh Token Failed"
-    message_code = 10100
-
-
 class FileTooLarge(APIException):
     code = 413
     message = "File Too Large"
