@@ -107,7 +107,7 @@ class Deleted(APIException):
     message_code = 3
 
 
-class Fail(APIException):
+class Failed(APIException):
     code = 400
     message = "Failed"
     message_code = 10200
