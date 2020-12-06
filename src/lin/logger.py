@@ -144,7 +144,7 @@ class Logger(object):
         Log.create_log(
             message=self.message,
             user_id=self.user.id,
-            user_name=self.user.username,
+            username=self.user.username,
             status_code=status_code,
             method=request.method,
             path=request.path,
