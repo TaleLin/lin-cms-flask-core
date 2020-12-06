@@ -9,8 +9,6 @@
 """
 
 
-from sqlalchemy.exc import DatabaseError
-
 from .db import db
 
 __all__ = ["Manager"]

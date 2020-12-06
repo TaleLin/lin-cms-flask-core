@@ -12,6 +12,8 @@ from collections import namedtuple
 from datetime import date, datetime
 from enum import Enum
 from functools import wraps
+from sqlalchemy.exc import DatabaseError
+
 
 from flask import Blueprint, Flask, current_app, json, jsonify
 from flask.json import JSONEncoder as _JSONEncoder
@@ -260,7 +262,11 @@ class Lin(object):
         jwt.init_app(app)
         mount and self.mount(app)
         # 挂载后才能获取代码中的权限
-        sync_permissions and self.sync_permissions(app)
+        # 多进程/线程下可能同时写入相同数据，由权限表联合唯一约束限制
+        try:
+            sync_permissions and self.sync_permissions(app)
+        except DatabaseError:
+            pass
         handle and self.handle_error(app)
         syslogger and SysLogger(app)
 
