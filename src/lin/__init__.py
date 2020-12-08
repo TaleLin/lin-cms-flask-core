@@ -13,6 +13,7 @@ from datetime import date, datetime
 from enum import Enum
 from functools import wraps
 from sqlalchemy.exc import DatabaseError
+from pydantic import BaseModel
 
 
 from flask import Blueprint, Flask, current_app, json, jsonify
@@ -124,6 +125,11 @@ def find_auth_module(auth):
 
 class JSONEncoder(_JSONEncoder):
     def default(self, o):
+        if o.__class__.__name__ == "ModelMetaclass":
+            base_model_dict = dict()
+            for k, v in o.__fields__.items():
+                base_model_dict[k] = getattr(o, k) if hasattr(o, k) else v.default
+            return base_model_dict
         if hasattr(o, "keys") and hasattr(o, "__getitem__"):
             return dict(o)
         if isinstance(o, datetime):
@@ -143,8 +149,8 @@ def auto_response(func):
     @wraps(func)
     def make_lin_response(o):
         if isinstance(o, (RecordCollection, Record)) or (
-            hasattr(o, "keys") and hasattr(o, "__getitem__")
-        ):
+            hasattr(o, "keys") and hasattr(o, "__getitem__")) or (
+                o.__class__.__name__ == "ModelMetaclass"):
             o = jsonify(o)
         elif isinstance(o, (Enum, int, list, set)):
             o = json.dumps(o)
@@ -152,6 +158,7 @@ def auto_response(func):
             oc = list(o)
             oc[0] = json.dumps(o[0])
             o = tuple(oc)
+
         return func(o)
 
     return make_lin_response
