@@ -140,6 +140,8 @@ class JSONEncoder(_JSONEncoder):
             return o.value
         if isinstance(o, (RecordCollection, Record)):
             return o.as_dict()
+        if isinstance(o, BaseModel):
+            return o.dict()
         if isinstance(o, (int, list, set, tuple)):
             return json.dumps(o, cls=JSONEncoder)
         return JSONEncoder.default(self, o)
@@ -148,7 +150,7 @@ class JSONEncoder(_JSONEncoder):
 def auto_response(func):
     @wraps(func)
     def make_lin_response(o):
-        if isinstance(o, (RecordCollection, Record)) or (
+        if isinstance(o, (RecordCollection, Record, BaseModel)) or (
             hasattr(o, "keys") and hasattr(o, "__getitem__")) or (
                 o.__class__.__name__ == "ModelMetaclass"):
             o = jsonify(o)
