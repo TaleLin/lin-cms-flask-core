@@ -23,7 +23,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
 
-from .config import Config
+from .config import lin_config, global_config
 from .db import Record, RecordCollection, db
 from .exception import APIException, InternalServerError
 from .jwt import jwt
@@ -46,7 +46,6 @@ permission_meta_infos = {}
 # we always access config by flask, but it dependents on the flask context
 # so we move the plugin config here,which you can access config more convenience
 
-lin_config = Config()
 
 # a proxy for manager instance
 # attention, only used when context in  stack
@@ -181,7 +180,12 @@ class Lin(object):
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
+        **kwargs         #  保留的扩展参数
     ):
+        global global_config
+        for k, v in kwargs.items():
+            if k.startswith("config_"):
+                global_config[k[7:]] = v
         self.app = app
         if app is not None:
             self.init_app(

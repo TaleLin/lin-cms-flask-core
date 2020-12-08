@@ -9,7 +9,7 @@
 """
 from importlib import import_module
 
-from . import lin_config
+from .config import lin_config
 from .db import db
 from .plugin import Plugin
 from .redprint import Redprint

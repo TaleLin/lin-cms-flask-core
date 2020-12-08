@@ -2,7 +2,7 @@
     config class of Lin
     ~~~~~~~~~
 
-    This module implements a config class for plugin.
+    This module implements a config class
 
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
@@ -44,3 +44,7 @@ class Config(defaultdict):
         if plugin_conf is None:
             return default
         return plugin_conf.get(plugin_key, default)
+
+lin_config = Config() 
+
+global_config = dict()
