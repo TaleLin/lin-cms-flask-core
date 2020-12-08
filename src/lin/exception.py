@@ -6,12 +6,14 @@
 """
 from typing import Union
 
-from flask import current_app, json, request
+from flask import json, request
 from werkzeug._compat import text_type
 from werkzeug.exceptions import HTTPException
 
 from .multiplemeta import MultipleMeta
+from .config import global_config
 
+code_message = global_config.get("MESSAGE", dict())
 
 class APIException(HTTPException, metaclass=MultipleMeta):
     code = 500
@@ -20,14 +22,14 @@ class APIException(HTTPException, metaclass=MultipleMeta):
     headers = {"Content-Type": "application/json"}
 
     def __init__(self):
-        msg = current_app.config.get("MESSAGE").get(self.message_code)
+        msg = code_message.get(self.message_code)
         if msg:
             self.message = msg
         super(APIException, self).__init__(self.message, None)
 
     def __init__(self, message_code: int):
         self.message_code = message_code
-        msg = current_app.config.get("MESSAGE").get(self.message_code)
+        msg = code_message.get(self.message_code)
         if msg:
             self.message = msg
         super(APIException, self).__init__(self.message, None)
