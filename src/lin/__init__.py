@@ -23,7 +23,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
 
-from .config import lin_config, global_config
+from .config import global_config
 from .db import Record, RecordCollection, db
 from .exception import APIException, InternalServerError
 from .jwt import jwt

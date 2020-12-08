@@ -13,7 +13,6 @@ from werkzeug.exceptions import HTTPException
 from .multiplemeta import MultipleMeta
 from .config import global_config
 
-code_message = global_config.get("MESSAGE", dict())
 
 class APIException(HTTPException, metaclass=MultipleMeta):
     code = 500
@@ -22,6 +21,7 @@ class APIException(HTTPException, metaclass=MultipleMeta):
     headers = {"Content-Type": "application/json"}
 
     def __init__(self):
+        code_message = global_config.get("MESSAGE", dict())
         msg = code_message.get(self.message_code)
         if msg:
             self.message = msg
@@ -29,6 +29,7 @@ class APIException(HTTPException, metaclass=MultipleMeta):
 
     def __init__(self, message_code: int):
         self.message_code = message_code
+        code_message = global_config.get("MESSAGE", dict())
         msg = code_message.get(self.message_code)
         if msg:
             self.message = msg
