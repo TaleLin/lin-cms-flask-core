@@ -11,7 +11,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setuptools.setup(
     name='Lin-CMS',
-    version="0.3.0a4",
+    version="0.3.0a5",
     url='https://pypi.org/project/Lin-CMS/',
     license='MIT',
     author='pedroGao',
