@@ -195,8 +195,7 @@ class Uploader(object):
             for single in self._file_storage:
                 if self._get_size(single) > self._single_limit:
                     raise FileTooLarge(
-                        single.filename + "大小不能超过" +
-                        str(self._single_limit) + "字节"
+                        single.filename + "大小不能超过" + str(self._single_limit) + "字节"
                     )
                 total_size += self._get_size(single)
             if total_size > self._total_limit:

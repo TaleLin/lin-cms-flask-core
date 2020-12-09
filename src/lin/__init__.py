@@ -14,17 +14,15 @@ from enum import Enum
 from functools import wraps
 from uuid import uuid4
 
-from sqlalchemy.exc import DatabaseError
-from pydantic import BaseModel as _BaseModel
-from spectree import Response as _Response
-from pydantic.main import Any ,object_setattr,validate_model
-
 from flask import Blueprint, Flask, current_app, json, jsonify
 from flask.json import JSONEncoder as _JSONEncoder
 from flask.wrappers import Response
+from pydantic import BaseModel as _BaseModel
+from pydantic.main import Any, object_setattr, validate_model
+from spectree import Response as _Response
+from sqlalchemy.exc import DatabaseError
 from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
-
 
 from .config import global_config
 from .db import Record, RecordCollection, db
@@ -32,8 +30,6 @@ from .exception import APIException, InternalServerError, ParameterError
 from .jwt import jwt
 from .manager import Manager
 from .syslogger import SysLogger
-
-
 
 __version__ = "0.3.0"
 
@@ -126,17 +122,19 @@ def find_auth_module(auth):
     """ 通过权限寻找meta信息"""
     return manager.find_auth_module(auth)
 
-class BaseModel(_BaseModel):
 
+class BaseModel(_BaseModel):
     def __init__(__pydantic_self__, **data: Any) -> None:
-        values, fields_set, validation_error = validate_model(__pydantic_self__.__class__, data)
+        values, fields_set, validation_error = validate_model(
+            __pydantic_self__.__class__, data
+        )
         if validation_error:
             # TODO 收集多个异常
             raise ParameterError(
                 {i["loc"][0]: [i["msg"]] for i in validation_error.errors()}
-                                   )
-        object_setattr(__pydantic_self__, '__dict__', values)
-        object_setattr(__pydantic_self__, '__fields_set__', fields_set)
+            )
+        object_setattr(__pydantic_self__, "__dict__", values)
+        object_setattr(__pydantic_self__, "__fields_set__", fields_set)
         __pydantic_self__._init_private_attributes()
 
 
@@ -158,37 +156,33 @@ class DocResponse(_Response):
             else:
                 schema_name = "{class_name}_{message_code}_{hashmsg}Schema".format(
                     class_name=name,
-                    message_code=arg.message_code, 
-                    hashmsg=hash((arg.message))
+                    message_code=arg.message_code,
+                    hashmsg=hash((arg.message)),
                 )
 
-            self.code_models[arg.code]  = type(
+            self.code_models[arg.code] = type(
                 schema_name,
-                (BaseModel,), 
-                dict(code=arg.message_code , message=arg.message)
+                (BaseModel,),
+                dict(code=arg.message_code, message=arg.message),
             )
 
         for http_status, response in kwargs.items():
-            http_status_code = int(http_status.split('_')[-1])
+            http_status_code = int(http_status.split("_")[-1])
             if response.__class__.__name__ == "ModelMetaclass":
-                self.code_models[http_status_code]  = response
+                self.code_models[http_status_code] = response
             elif isinstance(response, dict):
                 response_str = json.dumps(response, cls=JSONEncoder)
-                self.code_models[http_status_code]  = type(
-                    "Dict-{}Schema".format(hash(response_str)),
-                    (BaseModel,),
-                    response 
-                    )
+                self.code_models[http_status_code] = type(
+                    "Dict-{}Schema".format(hash(response_str)), (BaseModel,), response
+                )
             elif isinstance(response, (RecordCollection, Record)) or (
                 hasattr(response, "keys") and hasattr(response, "__getitem__")
             ):
                 response_str = json.dumps(response, cls=JSONEncoder)
                 response = json.loads(response_str)
-                self.code_models[http_status_code]  = type(
-                    'Json{}Schema'.format(hash(response_str)),
-                    (BaseModel,),
-                    response
-                    )
+                self.code_models[http_status_code] = type(
+                    "Json{}Schema".format(hash(response_str)), (BaseModel,), response
+                )
 
     def generate_spec(self):
         """
@@ -199,15 +193,18 @@ class DocResponse(_Response):
         responses = {}
         for code, base_model in self.code_models.items():
             responses[code] = {
-                "description": global_config.get("DESC", None).get(code,"No Desc" ),
+                "description": global_config.get("DESC", None).get(code, "No Desc"),
                 "content": {
                     "application/json": {
-                        "schema": {"$ref": f"#/components/schemas/{base_model.__name__}"}
+                        "schema": {
+                            "$ref": f"#/components/schemas/{base_model.__name__}"
+                        }
                     }
                 },
             }
 
         return responses
+
 
 class JSONEncoder(_JSONEncoder):
     def default(self, o):
@@ -236,9 +233,11 @@ class JSONEncoder(_JSONEncoder):
 def auto_response(func):
     @wraps(func)
     def make_lin_response(o):
-        if isinstance(o, (RecordCollection, Record, BaseModel)) or (
-            hasattr(o, "keys") and hasattr(o, "__getitem__")) or (
-                o.__class__.__name__ == "ModelMetaclass"):
+        if (
+            isinstance(o, (RecordCollection, Record, BaseModel))
+            or (hasattr(o, "keys") and hasattr(o, "__getitem__"))
+            or (o.__class__.__name__ == "ModelMetaclass")
+        ):
             o = jsonify(o)
         elif isinstance(o, (Enum, int, list, set)):
             o = json.dumps(o)
@@ -267,7 +266,7 @@ class Lin(object):
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
-        **kwargs         #  保留的扩展参数
+        **kwargs,  #  保留的扩展参数
     ):
         global global_config
         for k, v in kwargs.items():
@@ -389,8 +388,7 @@ class Lin(object):
             bp, url_prefix=app.config.get("BP_URL_PREFIX", "/plugins")
         )
         for ep, func in app.view_functions.items():
-            info = permission_meta_infos.get(
-                func.__name__ + str(func.__hash__()), None)
+            info = permission_meta_infos.get(func.__name__ + str(func.__hash__()), None)
             if info:
                 self.manager.ep_meta.setdefault(ep, info)
 

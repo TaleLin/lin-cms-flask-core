@@ -20,7 +20,13 @@ class Form(WTForm):
     def __init__(self):
         data = request.get_json(silent=True)
         args = request.args.to_dict()
-        illegal_params = set(args.keys()) & {"formdata", "obj", "prefix", "data", 'meta'}
+        illegal_params = set(args.keys()) & {
+            "formdata",
+            "obj",
+            "prefix",
+            "data",
+            "meta",
+        }
         if illegal_params:
             raise ParameterError("非法参数: {}".format(illegal_params))
         super(Form, self).__init__(data=data, **args)

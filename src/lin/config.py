@@ -45,6 +45,7 @@ class Config(defaultdict):
             return default
         return plugin_conf.get(plugin_key, default)
 
-lin_config = Config() 
+
+lin_config = Config()
 
 global_config = dict()
