@@ -19,20 +19,23 @@ class APIException(HTTPException, metaclass=MultipleMeta):
     message = "抱歉，服务器未知错误"
     message_code = 9999
     headers = {"Content-Type": "application/json"}
+    _config = True
 
     def __init__(self):
-        code_message = global_config.get("MESSAGE", dict())
-        msg = code_message.get(self.message_code)
-        if msg:
-            self.message = msg
+        if self._config:
+            code_message = global_config.get("MESSAGE", dict())
+            msg = code_message.get(self.message_code)
+            if msg:
+                self.message = msg
         super(APIException, self).__init__(self.message, None)
 
     def __init__(self, message_code: int):
         self.message_code = message_code
-        code_message = global_config.get("MESSAGE", dict())
-        msg = code_message.get(self.message_code)
-        if msg:
-            self.message = msg
+        if self._config:
+            code_message = global_config.get("MESSAGE", dict())
+            msg = code_message.get(self.message_code)
+            if msg:
+                self.message = msg
         super(APIException, self).__init__(self.message, None)
 
     def __init__(self, message: str):
@@ -138,6 +141,13 @@ class ParameterError(APIException):
     code = 400
     message = "Parameters Error"
     message_code = 10030
+
+
+class DocParameterError(APIException):
+    code = 400
+    message = {"parameter": ["validation error info",]}
+    message_code = 10030
+    _config = False
 
 
 class TokenInvalid(APIException):
