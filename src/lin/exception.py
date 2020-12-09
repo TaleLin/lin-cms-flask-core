@@ -10,8 +10,8 @@ from flask import json, request
 from werkzeug._compat import text_type
 from werkzeug.exceptions import HTTPException
 
-from .multiplemeta import MultipleMeta
 from .config import global_config
+from .multiplemeta import MultipleMeta
 
 
 class APIException(HTTPException, metaclass=MultipleMeta):
@@ -145,7 +145,11 @@ class ParameterError(APIException):
 
 class DocParameterError(APIException):
     code = 400
-    message = {"parameter": ["validation error info",]}
+    message = {
+        "parameter": [
+            "validation error info",
+        ]
+    }
     message_code = 10030
     _config = False
 
