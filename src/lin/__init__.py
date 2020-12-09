@@ -12,9 +12,12 @@ from collections import namedtuple
 from datetime import date, datetime
 from enum import Enum
 from functools import wraps
-from sqlalchemy.exc import DatabaseError
-from pydantic import BaseModel
+from uuid import uuid4
 
+from sqlalchemy.exc import DatabaseError
+from pydantic import BaseModel as _BaseModel
+from spectree import Response as _Response
+from pydantic.main import Any ,object_setattr,validate_model
 
 from flask import Blueprint, Flask, current_app, json, jsonify
 from flask.json import JSONEncoder as _JSONEncoder
@@ -25,10 +28,12 @@ from werkzeug.local import LocalProxy
 
 from .config import global_config
 from .db import Record, RecordCollection, db
-from .exception import APIException, InternalServerError
+from .exception import APIException, InternalServerError, ParameterError
 from .jwt import jwt
 from .manager import Manager
 from .syslogger import SysLogger
+
+
 
 __version__ = "0.3.0"
 
@@ -121,6 +126,88 @@ def find_auth_module(auth):
     """ 通过权限寻找meta信息"""
     return manager.find_auth_module(auth)
 
+class BaseModel(_BaseModel):
+
+    def __init__(__pydantic_self__, **data: Any) -> None:
+        values, fields_set, validation_error = validate_model(__pydantic_self__.__class__, data)
+        if validation_error:
+            # TODO 收集多个异常
+            raise ParameterError(
+                {i["loc"][0]: [i["msg"]] for i in validation_error.errors()}
+                                   )
+        object_setattr(__pydantic_self__, '__dict__', values)
+        object_setattr(__pydantic_self__, '__fields_set__', fields_set)
+        __pydantic_self__._init_private_attributes()
+
+
+class DocResponse(_Response):
+    """
+    response object
+
+    :param args: subclass/object of APIException or obj/dict with code message_code message or None
+    :param kwargs: <HTTP status code>: <`dict`> <`Record`> <`RecordCollection`> <`pydantic.BaseModel`> or None
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.code_models = dict()
+
+        for arg in args:
+            name = arg.__class__.__name__
+            if name == "MultipleMeta":
+                schema_name = arg.__name__ + "Schema"
+            else:
+                schema_name = "{class_name}_{message_code}_{hashmsg}Schema".format(
+                    class_name=name,
+                    message_code=arg.message_code, 
+                    hashmsg=hash((arg.message))
+                )
+
+            self.code_models[arg.code]  = type(
+                schema_name,
+                (BaseModel,), 
+                dict(code=arg.message_code , message=arg.message)
+            )
+
+        for http_status, response in kwargs.items():
+            http_status_code = int(http_status.split('_')[-1])
+            if response.__class__.__name__ == "ModelMetaclass":
+                self.code_models[http_status_code]  = response
+            elif isinstance(response, dict):
+                response_str = json.dumps(response, cls=JSONEncoder)
+                self.code_models[http_status_code]  = type(
+                    "Dict-{}Schema".format(hash(response_str)),
+                    (BaseModel,),
+                    response 
+                    )
+            elif isinstance(response, (RecordCollection, Record)) or (
+                hasattr(response, "keys") and hasattr(response, "__getitem__")
+            ):
+                response_str = json.dumps(response, cls=JSONEncoder)
+                response = json.loads(response_str)
+                self.code_models[http_status_code]  = type(
+                    'Json{}Schema'.format(hash(response_str)),
+                    (BaseModel,),
+                    response
+                    )
+
+    def generate_spec(self):
+        """
+        generate the spec for responses
+
+        :returns: JSON
+        """
+        responses = {}
+        for code, base_model in self.code_models.items():
+            responses[code] = {
+                "description": global_config.get("DESC", None).get(code,"No Desc" ),
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": f"#/components/schemas/{base_model.__name__}"}
+                    }
+                },
+            }
+
+        return responses
 
 class JSONEncoder(_JSONEncoder):
     def default(self, o):

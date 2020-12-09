@@ -21,7 +21,7 @@ setuptools.setup(
     description='A simple and practical CMS implememted by flask',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    keywords=['flask', 'CMS', 'authority', 'jwt'],
+    keywords=['flask', 'CMS', 'authority', 'jwt', 'openapi'],
     packages=setuptools.find_packages("src"),
     package_dir={"": "src"},
     zip_safe=False,
@@ -32,7 +32,8 @@ setuptools.setup(
         'Flask_JWT_Extended==3.25.0',
         'SQLAlchemy==1.3.20',
         'Flask_SQLAlchemy==2.4.4',
-        'tablib==2.0.0'
+        'tablib==3.0.0',
+        'spectree==0.3.13'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
