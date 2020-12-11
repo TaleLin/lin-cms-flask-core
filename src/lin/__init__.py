@@ -266,6 +266,7 @@ class Lin(object):
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
+        **kwargs # 保留配置项
     ):
         self.app = app
         if app is not None:
