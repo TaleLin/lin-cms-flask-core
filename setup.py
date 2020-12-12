@@ -33,7 +33,7 @@ setuptools.setup(
         "SQLAlchemy==1.3.20",
         "Flask_SQLAlchemy==2.4.4",
         "tablib==3.0.0",
-        "spectree==0.3.14",
+        "spectree==0.3.16",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
