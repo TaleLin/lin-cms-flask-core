@@ -14,12 +14,13 @@ from enum import Enum
 from functools import wraps
 from uuid import uuid4
 
-from flask import Blueprint, Flask, current_app, json, jsonify
+from flask import Blueprint, Flask, current_app, g, json, jsonify
 from flask.json import JSONEncoder as _JSONEncoder
 from flask.wrappers import Response
 from pydantic import BaseModel as _BaseModel
 from pydantic.main import Any, object_setattr, validate_model
 from spectree import Response as _Response
+from spectree import SpecTree as _SpecTree
 from sqlalchemy.exc import DatabaseError
 from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
@@ -266,7 +267,7 @@ class Lin(object):
         mount=True,  # 是否挂载默认的蓝图, default True
         handle=True,  # 是否使用全局异常处理, default True
         syslogger=True,  # 是否使用自定义系统运行日志，default True
-        **kwargs # 保留配置项
+        **kwargs,  # 保留配置项
     ):
         self.app = app
         if app is not None:
@@ -410,3 +411,95 @@ class Lin(object):
     def enable_auto_jsonify(self, app):
         app.json_encoder = self.jsonencoder or JSONEncoder
         app.make_response = auto_response(app.make_response)
+
+
+class SpecTree(_SpecTree):
+    def validate(
+        self,
+        query=None,
+        json=None,
+        headers=None,
+        cookies=None,
+        resp=None,
+        tags=(),
+        before=None,
+        after=None,
+    ):
+        """
+        - validate query, json, headers in request
+        - validate response body and status code
+        - add tags to this API route
+
+        :param query: `pydantic.BaseModel`, query in uri like `?name=value`
+        :param json: `pydantic.BaseModel`, JSON format request body
+        :param headers: `pydantic.BaseModel`, if you have specific headers
+        :param cookies: `pydantic.BaseModel`, if you have cookies for this route
+        :param resp: `spectree.Response`
+        :param tags: a tuple of tags string
+        :param before: :meth:`spectree.utils.default_before_handler` for specific endpoint
+        :param after: :meth:`spectree.utils.default_after_handler` for specific endpoint
+        """
+
+        def decorate_validation(func):
+            @wraps(func)
+            def sync_validate(*args, **kwargs):
+                def lin_before(req, resp, req_validation_error, instance):
+                    if before:
+                        before(req, resp, req_validation_error, instance)
+                    schemas = ["headers", "cookies", "query", "json"]
+                    for schema in schemas:
+                        params = getattr(req.context, schema)
+                        if params:
+                            for k, v in params:
+                                if hasattr(g, k):
+                                    raise ParameterError(
+                                        {
+                                            k: "This parameter in {schema} needs to be renamed".format(
+                                                schema=schema.capitalize()
+                                            )
+                                        }
+                                    )
+                                setattr(g, k, v)
+
+                return self.backend.validate(
+                    func,
+                    query,
+                    json,
+                    headers,
+                    cookies,
+                    resp,
+                    lin_before,
+                    after or self.after,
+                    *args,
+                    **kwargs,
+                )
+
+            validation = sync_validate
+
+            # register
+            for name, model in zip(
+                ("query", "json", "headers", "cookies"), (query, json, headers, cookies)
+            ):
+                if model is not None:
+                    assert issubclass(model, BaseModel)
+                    self.models[model.__name__] = model.schema()
+                    setattr(validation, name, model.__name__)
+
+            if resp:
+                for model in resp.models:
+                    self.models[model.__name__] = model.schema()
+                validation.resp = resp
+
+            if tags:
+                validation.tags = tags
+
+            # register decorator
+            validation._decorator = self
+            return validation
+
+        return decorate_validation
+
+
+lindoc = SpecTree(
+    backend_name="flask", title="Lin-CMS API", mode="strict", version=__version__
+)
