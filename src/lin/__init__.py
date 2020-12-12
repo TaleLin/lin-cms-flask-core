@@ -508,8 +508,3 @@ class SpecTree(_SpecTree):
             return validation
 
         return decorate_validation
-
-
-lindoc = SpecTree(
-    backend_name="flask", title="Lin-CMS API", mode="strict", version=__version__
-)
