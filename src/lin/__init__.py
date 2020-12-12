@@ -27,7 +27,12 @@ from werkzeug.local import LocalProxy
 
 from .config import global_config
 from .db import Record, RecordCollection, db
-from .exception import APIException, InternalServerError, ParameterError
+from .exception import (
+    APIException,
+    DocParameterError,
+    InternalServerError,
+    ParameterError,
+)
 from .jwt import jwt
 from .manager import Manager
 from .syslogger import SysLogger
@@ -149,7 +154,6 @@ class DocResponse(_Response):
 
     def __init__(self, *args, **kwargs):
         self.code_models = dict()
-
         for arg in args:
             name = arg.__class__.__name__
             if name == "MultipleMeta":
@@ -210,10 +214,7 @@ class DocResponse(_Response):
 class JSONEncoder(_JSONEncoder):
     def default(self, o):
         if o.__class__.__name__ == "ModelMetaclass":
-            base_model_dict = dict()
-            for k, v in o.__fields__.items():
-                base_model_dict[k] = getattr(o, k) if hasattr(o, k) else v.default
-            return base_model_dict
+            return o.schema()
         if hasattr(o, "keys") and hasattr(o, "__getitem__"):
             return dict(o)
         if isinstance(o, datetime):
@@ -486,6 +487,15 @@ class SpecTree(_SpecTree):
                     setattr(validation, name, model.__name__)
 
             if resp:
+                if query or json or headers or cookies:
+                    resp.code_models[DocParameterError.code] = type(
+                        "DocParameterErrorSchema",
+                        (BaseModel,),
+                        dict(
+                            code=DocParameterError.message_code,
+                            message=DocParameterError.message,
+                        ),
+                    )
                 for model in resp.models:
                     self.models[model.__name__] = model.schema()
                 validation.resp = resp
