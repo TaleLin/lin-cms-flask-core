@@ -198,7 +198,7 @@ class DocResponse(_Response):
         responses = {}
         for code, base_model in self.code_models.items():
             responses[code] = {
-                "description": global_config.get("DESC", None).get(code, "No Desc"),
+                "description": global_config.get("DESC", dict()).get(code, "No Desc"),
                 "content": {
                     "application/json": {
                         "schema": {
