@@ -39,11 +39,14 @@ class Permission(PermissionInterface):
 class User(UserInterface):
     @property
     def avatar(self):
-        site_domain = (
-            current_app.config.get("SITE_DOMAIN")
-            if current_app.config.get("SITE_DOMAIN")
-            else "http://127.0.0.1:5000"
+        site_domain = current_app.config.get(
+            "SITE_DOMAIN",
+            "http://{host}:{port}".format(
+                host=current_app.config.get("FLASK_RUN_HOST", "127.0.0.1"),
+                port=current_app.config.get("FLASK_RUN_PORT", "5000"),
+            ),
         )
+
         if self._avatar is not None:
             return site_domain + os.path.join(current_app.static_url_path, self._avatar)
 
