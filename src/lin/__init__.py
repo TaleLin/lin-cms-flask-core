@@ -178,7 +178,8 @@ class DocResponse(_Response):
             elif isinstance(response, dict):
                 response_str = json.dumps(response, cls=JSONEncoder)
                 self.code_models[http_status_code] = type(
-                    "Dict-{}Schema".format(hash(response_str)), (BaseModel,), response
+                    "Dict-{}Schema".format(hash(response_str)
+                                           ), (BaseModel,), response
                 )
             elif isinstance(response, (RecordCollection, Record)) or (
                 hasattr(response, "keys") and hasattr(response, "__getitem__")
@@ -186,7 +187,8 @@ class DocResponse(_Response):
                 response_str = json.dumps(response, cls=JSONEncoder)
                 response = json.loads(response_str)
                 self.code_models[http_status_code] = type(
-                    "Json{}Schema".format(hash(response_str)), (BaseModel,), response
+                    "Json{}Schema".format(
+                        hash(response_str)), (BaseModel,), response
                 )
 
     def generate_spec(self):
@@ -386,7 +388,8 @@ class Lin(object):
             bp, url_prefix=app.config.get("BP_URL_PREFIX", "/plugins")
         )
         for ep, func in app.view_functions.items():
-            info = permission_meta_infos.get(func.__name__ + str(func.__hash__()), None)
+            info = permission_meta_infos.get(
+                func.__name__ + str(func.__hash__()), None)
             if info:
                 self.manager.ep_meta.setdefault(ep, info)
 
@@ -479,11 +482,14 @@ class SpecTree(_SpecTree):
 
             # register
             for name, model in zip(
-                ("query", "json", "headers", "cookies"), (query, json, headers, cookies)
+                ("query", "json", "headers",
+                 "cookies"), (query, json, headers, cookies)
             ):
                 if model is not None:
                     assert issubclass(model, BaseModel)
-                    self.models[model.__name__] = model.schema()
+                    self.models[model.__name__] = model.schema(
+                        ref_template="#/components/schemas/{model}"
+                    )
                     setattr(validation, name, model.__name__)
 
             if resp:
@@ -497,7 +503,9 @@ class SpecTree(_SpecTree):
                         ),
                     )
                 for model in resp.models:
-                    self.models[model.__name__] = model.schema()
+                    self.models[model.__name__] = model.schema(
+                        ref_template="#/components/schemas/{model}"
+                    )
                 validation.resp = resp
 
             if tags:
