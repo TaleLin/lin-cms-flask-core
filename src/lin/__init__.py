@@ -152,7 +152,7 @@ class DocResponse(_Response):
     :param kwargs: <HTTP status code>: <`dict`> <`Record`> <`RecordCollection`> <`pydantic.BaseModel`> or None
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, r=None):
         self.code_models = dict()
         for arg in args:
             name = arg.__class__.__name__
@@ -171,22 +171,22 @@ class DocResponse(_Response):
                 dict(code=arg.message_code, message=arg.message),
             )
 
-        for http_status, response in kwargs.items():
-            http_status_code = int(http_status.split("_")[-1])
-            if response.__class__.__name__ == "ModelMetaclass":
-                self.code_models[http_status_code] = response
-            elif isinstance(response, dict):
-                response_str = json.dumps(response, cls=JSONEncoder)
+        if r != None:
+            http_status_code = 200
+            if r.__class__.__name__ == "ModelMetaclass":
+                self.code_models[http_status_code] = r
+            elif isinstance(r, dict):
+                response_str = json.dumps(r, cls=JSONEncoder)
                 self.code_models[http_status_code] = type(
-                    "Dict-{}Schema".format(hash(response_str)), (BaseModel,), response
+                    "Dict-{}Schema".format(hash(response_str)), (BaseModel,), r
                 )
-            elif isinstance(response, (RecordCollection, Record)) or (
-                hasattr(response, "keys") and hasattr(response, "__getitem__")
+            elif isinstance(r, (RecordCollection, Record)) or (
+                hasattr(r, "keys") and hasattr(r, "__getitem__")
             ):
-                response_str = json.dumps(response, cls=JSONEncoder)
-                response = json.loads(response_str)
+                r_str = json.dumps(r, cls=JSONEncoder)
+                r = json.loads(r_str)
                 self.code_models[http_status_code] = type(
-                    "Json{}Schema".format(hash(response_str)), (BaseModel,), response
+                    "Json{}Schema".format(hash(r_str)), (BaseModel,), r
                 )
 
     def generate_spec(self):
