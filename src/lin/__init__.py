@@ -213,8 +213,6 @@ class DocResponse(_Response):
 
 class JSONEncoder(_JSONEncoder):
     def default(self, o):
-        if o.__class__.__name__ == "ModelMetaclass":
-            return o.schema()
         if hasattr(o, "keys") and hasattr(o, "__getitem__"):
             return dict(o)
         if isinstance(o, datetime):
@@ -226,6 +224,8 @@ class JSONEncoder(_JSONEncoder):
         if isinstance(o, (RecordCollection, Record)):
             return o.as_dict()
         if isinstance(o, BaseModel):
+            if o.__root__.__class__.__name__ in ("list", "int", "set", "tuple"):
+                return o.__root__
             return o.dict()
         if isinstance(o, (int, list, set, tuple)):
             return json.dumps(o, cls=JSONEncoder)
@@ -238,11 +238,9 @@ def auto_response(func):
         if (
             isinstance(o, (RecordCollection, Record, BaseModel))
             or (hasattr(o, "keys") and hasattr(o, "__getitem__"))
-            or (o.__class__.__name__ == "ModelMetaclass")
+            or isinstance(o, (Enum, int, list, set))
         ):
             o = jsonify(o)
-        elif isinstance(o, (Enum, int, list, set)):
-            o = json.dumps(o)
         elif isinstance(o, tuple) and not isinstance(o[0], Response):
             oc = list(o)
             oc[0] = json.dumps(o[0])
