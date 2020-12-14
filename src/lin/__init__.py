@@ -224,7 +224,7 @@ class JSONEncoder(_JSONEncoder):
         if isinstance(o, (RecordCollection, Record)):
             return o.as_dict()
         if isinstance(o, BaseModel):
-            if hasattr(o, __root__) and o.__root__.__class__.__name__ in ("list", "int", "set", "tuple"):
+            if hasattr(o, "__root__") and o.__root__.__class__.__name__ in ("list", "int", "set", "tuple"):
                 return o.__root__
             return o.dict()
         if isinstance(o, (int, list, set, tuple)):
