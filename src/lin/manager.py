@@ -95,7 +95,7 @@ class Manager(object):
         from .db import db
 
         ep = request.endpoint
-        # 根据 endpoint 查找 authority, 一定存在
+        # 根据 endpoint 查找 permission, 一定存在
         meta = self.ep_meta.get(ep)
         # 判断 用户组拥有的权限是否包含endpoint标记的权限
         # 传入用户组的 id 列表 和 权限模块名称 权限名称，根据 Group-Permission Model 判断对应权限是否存在
@@ -103,15 +103,15 @@ class Manager(object):
             self.group_permission_model.group_id.in_(group_ids)
         )
         result = self.permission_model.query.filter_by(
-            soft=True, module=meta.module, name=meta.auth, mount=True
+            soft=True, module=meta.module, name=meta.name, mount=True
         ).filter(self.permission_model.id.in_(query))
         permission = result.first()
         return True if permission else False
 
-    def find_auth_module(self, auth):
+    def find_permission_module(self, name):
         """ 通过权限寻找meta信息"""
         for _, meta in self.ep_meta.items():
-            if meta.auth == auth:
+            if meta.name == name:
                 return meta
         return None
 
