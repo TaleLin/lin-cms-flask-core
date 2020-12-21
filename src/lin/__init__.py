@@ -40,10 +40,10 @@ from .syslogger import SysLogger
 __version__ = "0.3.0"
 
 # 路由函数的权限和模块信息(meta信息)
-Meta = namedtuple("meta", ["auth", "module", "mount"])
+Meta = namedtuple("meta", ["name", "module", "mount"])
 
 #       -> endpoint -> func
-# auth                      -> module
+# permission                      -> module
 #       -> endpoint -> func
 
 # 记录路由函数的权限和模块信息
@@ -72,12 +72,12 @@ def get_manager():
             return app.extensions["manager"]
 
 
-def permission_meta(auth, module="common", mount=True):
+def permission_meta(name, module="common", mount=True):
     """
     记录路由函数的信息
     记录路由函数访问的推送信息模板
     注：只有使用了 permission_meta 装饰器的函数才会被记录到权限管理的map中
-    :param auth: 权限
+    :param name: 权限名称
     :param module: 所属模块
     :param mount: 是否挂在到权限中（一些视图函数需要说明，或暂时决定不挂在到权限中，则设置为False）
     :return:
@@ -92,7 +92,7 @@ def permission_meta(auth, module="common", mount=True):
         if existed:
             raise Exception("func's name cant't be repeat in a same module")
         else:
-            permission_meta_infos.setdefault(name, Meta(auth, module, mount))
+            permission_meta_infos.setdefault(name, Meta(name, module, mount))
         return func
 
     return wrapper
@@ -124,9 +124,9 @@ def is_user_allowed(group_ids):
     return manager.is_user_allowed(group_ids)
 
 
-def find_auth_module(auth):
-    """ 通过权限寻找meta信息"""
-    return manager.find_auth_module(auth)
+def find_permission_module(name):
+    """ 通过权限名寻找meta信息"""
+    return manager.find_permission_module(name)
 
 
 class BaseModel(_BaseModel):
@@ -331,7 +331,7 @@ class Lin(object):
         app.config.setdefault(
             "FILE",
             {
-                "STORE_DIR": "app/assets",
+                "STORE_DIR": "assets",
                 "SINGLE_LIMIT": 1024 * 1024 * 2,
                 "TOTAL_LIMIT": 1024 * 1024 * 20,
                 "NUMS": 10,

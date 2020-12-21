@@ -135,7 +135,7 @@ class Logger(object):
 
     def write_log(self):
         info = find_info_by_ep(request.endpoint)
-        permission = info.auth if info is not None else ""
+        permission = info.name if info is not None else ""
         status_code = getattr(self.response, "status_code", None)
         if status_code is None:
             status_code = getattr(self.response, "code", None)
