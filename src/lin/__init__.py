@@ -84,15 +84,15 @@ def permission_meta(name, module="common", mount=True):
     """
 
     def wrapper(func):
-        name = func.__name__ + str(func.__hash__())
+        func_name = func.__name__ + str(func.__hash__())
         existed = (
-            permission_meta_infos.get(name, None)
-            and permission_meta_infos.get(name).module == module
+            permission_meta_infos.get(func_name, None)
+            and permission_meta_infos.get(func_name).module == module
         )
         if existed:
-            raise Exception("func's name cant't be repeat in a same module")
+            raise Exception("func_name cant't be repeat in a same module")
         else:
-            permission_meta_infos.setdefault(name, Meta(name, module, mount))
+            permission_meta_infos.setdefault(func_name, Meta(name, module, mount))
         return func
 
     return wrapper
