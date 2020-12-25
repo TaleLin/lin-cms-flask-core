@@ -7,38 +7,21 @@
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
-import os
 from collections import namedtuple
-from datetime import date, datetime
-from enum import Enum
-from functools import wraps
-from uuid import uuid4
 
-from flask import Blueprint, Flask, current_app, g, json, jsonify
-from flask.json import JSONEncoder as _JSONEncoder
-from flask.wrappers import Response
-from pydantic import BaseModel as _BaseModel
-from pydantic.main import Any, object_setattr, validate_model
-from spectree import Response as _Response
-from spectree import SpecTree as _SpecTree
+from flask import Blueprint, Flask, current_app, g, jsonify, make_response
 from sqlalchemy.exc import DatabaseError
 from werkzeug.exceptions import HTTPException
 from werkzeug.local import LocalProxy
 
-from .config import global_config
-from .db import Record, RecordCollection, db
-from .exception import (
-    APIException,
-    DocParameterError,
-    InternalServerError,
-    ParameterError,
-)
+from .db import db
+from .encoder import JSONEncoder, auto_response
+from .exception import APIException, InternalServerError
 from .jwt import jwt
 from .manager import Manager
 from .syslogger import SysLogger
 
 __version__ = "0.3.0"
-
 # 路由函数的权限和模块信息(meta信息)
 Meta = namedtuple("meta", ["name", "module", "mount"])
 
@@ -48,6 +31,7 @@ Meta = namedtuple("meta", ["name", "module", "mount"])
 
 # 记录路由函数的权限和模块信息
 permission_meta_infos = {}
+
 
 # config for Lin plugins
 # we always access config by flask, but it dependents on the flask context
@@ -93,6 +77,7 @@ def permission_meta(name, module="common", mount=True):
             raise Exception("func_name cant't be repeat in a same module")
         else:
             permission_meta_infos.setdefault(func_name, Meta(name, module, mount))
+
         return func
 
     return wrapper
@@ -127,128 +112,6 @@ def is_user_allowed(group_ids):
 def find_permission_module(name):
     """ 通过权限名寻找meta信息"""
     return manager.find_permission_module(name)
-
-
-class BaseModel(_BaseModel):
-    def __init__(__pydantic_self__, **data: Any) -> None:
-        values, fields_set, validation_error = validate_model(
-            __pydantic_self__.__class__, data
-        )
-        if validation_error:
-            # TODO 收集多个异常
-            raise ParameterError(
-                {i["loc"][0]: [i["msg"]] for i in validation_error.errors()}
-            )
-        object_setattr(__pydantic_self__, "__dict__", values)
-        object_setattr(__pydantic_self__, "__fields_set__", fields_set)
-        __pydantic_self__._init_private_attributes()
-
-
-class DocResponse(_Response):
-    """
-    response object
-
-    :param args: subclass/object of APIException or obj/dict with code message_code message or None
-    :param kwargs: <HTTP status code>: <`dict`> <`Record`> <`RecordCollection`> <`pydantic.BaseModel`> or None
-    """
-
-    def __init__(self, *args, r=None):
-        self.code_models = dict()
-        for arg in args:
-            name = arg.__class__.__name__
-            if name == "MultipleMeta":
-                schema_name = arg.__name__ + "Schema"
-            else:
-                schema_name = "{class_name}_{message_code}_{hashmsg}Schema".format(
-                    class_name=name,
-                    message_code=arg.message_code,
-                    hashmsg=hash((arg.message)),
-                )
-
-            self.code_models[arg.code] = type(
-                schema_name,
-                (BaseModel,),
-                dict(code=arg.message_code, message=arg.message),
-            )
-
-        if r != None:
-            http_status_code = 200
-            if r.__class__.__name__ == "ModelMetaclass":
-                self.code_models[http_status_code] = r
-            elif isinstance(r, dict):
-                response_str = json.dumps(r, cls=JSONEncoder)
-                self.code_models[http_status_code] = type(
-                    "Dict-{}Schema".format(hash(response_str)), (BaseModel,), r
-                )
-            elif isinstance(r, (RecordCollection, Record)) or (
-                hasattr(r, "keys") and hasattr(r, "__getitem__")
-            ):
-                r_str = json.dumps(r, cls=JSONEncoder)
-                r = json.loads(r_str)
-                self.code_models[http_status_code] = type(
-                    "Json{}Schema".format(hash(r_str)), (BaseModel,), r
-                )
-
-    def generate_spec(self):
-        """
-        generate the spec for responses
-
-        :returns: JSON
-        """
-        responses = {}
-        for code, base_model in self.code_models.items():
-            responses[code] = {
-                "description": global_config.get("DESC", dict()).get(code, "No Desc"),
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": f"#/components/schemas/{base_model.__name__}"
-                        }
-                    }
-                },
-            }
-
-        return responses
-
-
-class JSONEncoder(_JSONEncoder):
-    def default(self, o):
-        if hasattr(o, "keys") and hasattr(o, "__getitem__"):
-            return dict(o)
-        if isinstance(o, datetime):
-            return o.strftime("%Y-%m-%dT%H:%M:%SZ")
-        if isinstance(o, date):
-            return o.strftime("%Y-%m-%d")
-        if isinstance(o, Enum):
-            return o.value
-        if isinstance(o, (RecordCollection, Record)):
-            return o.as_dict()
-        if isinstance(o, BaseModel):
-            if hasattr(o, "__root__") and o.__root__.__class__.__name__ in ("list", "int", "set", "tuple"):
-                return o.__root__
-            return o.dict()
-        if isinstance(o, (int, list, set, tuple)):
-            return json.dumps(o, cls=JSONEncoder)
-        return JSONEncoder.default(self, o)
-
-
-def auto_response(func):
-    @wraps(func)
-    def make_lin_response(o):
-        if (
-            isinstance(o, (RecordCollection, Record, BaseModel))
-            or (hasattr(o, "keys") and hasattr(o, "__getitem__"))
-            or isinstance(o, (Enum, int, list, set))
-        ):
-            o = jsonify(o)
-        elif isinstance(o, tuple) and not isinstance(o[0], Response):
-            oc = list(o)
-            oc[0] = json.dumps(o[0])
-            o = tuple(oc)
-
-        return func(o)
-
-    return make_lin_response
 
 
 class Lin(object):
@@ -380,9 +243,7 @@ class Lin(object):
             else:
                 for controller in plugin.controllers.values():
                     controller.register(bp)
-        app.register_blueprint(
-            bp, url_prefix=app.config.get("BP_URL_PREFIX", "/plugins")
-        )
+        app.register_blueprint(bp, url_prefix=app.config.get("BP_URL_PREFIX"))
         for ep, func in app.view_functions.items():
             info = permission_meta_infos.get(func.__name__ + str(func.__hash__()), None)
             if info:
@@ -410,103 +271,22 @@ class Lin(object):
     def enable_auto_jsonify(self, app):
         app.json_encoder = self.jsonencoder or JSONEncoder
         app.make_response = auto_response(app.make_response)
+        schema_response(app)
 
 
-class SpecTree(_SpecTree):
-    def validate(
-        self,
-        query=None,
-        json=None,
-        headers=None,
-        cookies=None,
-        resp=None,
-        tags=(),
-        before=None,
-        after=None,
-    ):
-        """
-        - validate query, json, headers in request
-        - validate response body and status code
-        - add tags to this API route
+def schema_response(app):
+    """
+    根据apidoc中指定的r schema，重新生成对应类型的响应
+    """
 
-        :param query: `pydantic.BaseModel`, query in uri like `?name=value`
-        :param json: `pydantic.BaseModel`, JSON format request body
-        :param headers: `pydantic.BaseModel`, if you have specific headers
-        :param cookies: `pydantic.BaseModel`, if you have cookies for this route
-        :param resp: `spectree.Response`
-        :param tags: a tuple of tags string
-        :param before: :meth:`spectree.utils.default_before_handler` for specific endpoint
-        :param after: :meth:`spectree.utils.default_after_handler` for specific endpoint
-        """
-
-        def decorate_validation(func):
-            @wraps(func)
-            def sync_validate(*args, **kwargs):
-                def lin_before(req, resp, req_validation_error, instance):
-                    if before:
-                        before(req, resp, req_validation_error, instance)
-                    schemas = ["headers", "cookies", "query", "json"]
-                    for schema in schemas:
-                        params = getattr(req.context, schema)
-                        if params:
-                            for k, v in params:
-                                if hasattr(g, k):
-                                    raise ParameterError(
-                                        {
-                                            k: "This parameter in {schema} needs to be renamed".format(
-                                                schema=schema.capitalize()
-                                            )
-                                        }
-                                    )
-                                setattr(g, k, v)
-
-                return self.backend.validate(
-                    func,
-                    query,
-                    json,
-                    headers,
-                    cookies,
-                    resp,
-                    lin_before,
-                    after or self.after,
-                    *args,
-                    **kwargs,
-                )
-
-            validation = sync_validate
-
-            # register
-            for name, model in zip(
-                ("query", "json", "headers", "cookies"), (query, json, headers, cookies)
-            ):
-                if model is not None:
-                    assert issubclass(model, BaseModel)
-                    self.models[model.__name__] = model.schema(
-                        ref_template="#/components/schemas/{model}"
-                    )
-                    setattr(validation, name, model.__name__)
-
-            if resp:
-                if query or json or headers or cookies:
-                    resp.code_models[DocParameterError.code] = type(
-                        "DocParameterErrorSchema",
-                        (BaseModel,),
-                        dict(
-                            code=DocParameterError.message_code,
-                            message=DocParameterError.message,
-                        ),
-                    )
-                for model in resp.models:
-                    self.models[model.__name__] = model.schema(
-                        ref_template="#/components/schemas/{model}"
-                    )
-                validation.resp = resp
-
-            if tags:
-                validation.tags = tags
-
-            # register decorator
-            validation._decorator = self
-            return validation
-
-        return decorate_validation
+    @app.after_request
+    def make_schema_response(response):
+        if (
+            hasattr(g, "_resp_schema")
+            and g._resp_schema
+            and response.status_code == 200
+        ):
+            response = make_response(
+                jsonify(g._resp_schema.parse_obj(response.get_json()))
+            )
+        return response

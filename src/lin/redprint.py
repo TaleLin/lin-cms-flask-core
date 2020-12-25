@@ -1,9 +1,7 @@
 """
     Redprint of Lin
     ~~~~~~~~~
-
     Redprint make blueprint more fine-grained
-
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
