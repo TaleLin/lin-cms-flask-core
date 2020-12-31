@@ -43,7 +43,7 @@ def auto_response(func):
             or isinstance(o, (Enum, int, list, set))
         ):
             o = jsonify(o)
-        elif isinstance(o, tuple) and not isinstance(o[0], Response):
+        elif isinstance(o, tuple) and not isinstance(o[0], (Response, str)):
             oc = list(o)
             oc[0] = json.dumps(o[0])
             o = tuple(oc)
