@@ -1,5 +1,6 @@
 *.pyc
 .vscode
+.python-version
 .idea/
 Pipfile.lock
 Pipfile

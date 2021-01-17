@@ -1,113 +1,172 @@
 """
-    logger of Lin
+    Logger of Lin
     ~~~~~~~~~
 
-    logger 模块，记录系统日志
+    logger模块，用户行为日志记录器
 
-    :copyright: © 2019 by the Lin team.
+    :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
-import datetime
-import logging
-import os
-from logging.handlers import BaseRotatingHandler
+import re
+from functools import wraps
+
+from flask import Response, request
+from flask_jwt_extended import get_current_user
+from sqlalchemy import Column, Integer, String, func
+
+from . import find_info_by_ep
+from .db import db
+from .interface import InfoCrud
 
 
-class LinLog:
-    def __init__(self, app, fmt=None, handler=None):
-        self._app = app
-        self._fmt = fmt
-        self._handler = handler
-        self._logger = None
-        self._log_config = self._app.config.get('LOG')
-        self.init_logger()
-        self.set_logger()
+class Log(InfoCrud):
+    __tablename__ = "lin_log"
 
-    def init_logger(self):
-        if self._log_config['FILE'] and not self._app.debug:
-            fmt = logging.Formatter(
-                "%(asctime)s %(levelname)s %(process)d   ---  [%(threadName)s]"
-                " - %(message)s" if not self._fmt else self._fmt
-            )
-            logging.basicConfig(level=logging.DEBUG)
-            self._handler = LinRotatingFileHandler(
-                    log_dir=self._log_config['DIR'],
-                    max_bytes=self._log_config['SIZE_LIMIT'],
-                    encoding='UTF-8'
-                )
-            self._handler.setFormatter(fmt)
-            self._handler.setLevel(level=logging.DEBUG)
-            self._app.logger.addHandler(self._handler)
-        else:
-            return
+    id = Column(Integer(), primary_key=True)
+    message = Column(String(450), comment="日志信息")
+    user_id = Column(Integer(), nullable=False, comment="用户id")
+    username = Column(String(24), comment="用户当时的昵称")
+    status_code = Column(Integer(), comment="请求的http返回码")
+    method = Column(String(20), comment="请求方法")
+    path = Column(String(50), comment="请求路径")
+    permission = Column(String(100), comment="访问哪个权限")
 
-    def set_logger(self):
-        self._logger = logging.getLogger(__name__)
+    @property
+    def time(self):
+        return int(round(self.create_time.timestamp() * 1000))
 
-    def get_logger(self):
-        return self._logger
-
-
-class LinRotatingFileHandler(BaseRotatingHandler):
-    def __init__(self, log_dir='logs', mode='a', max_bytes=0, encoding=None, delay=False):
-
-        if max_bytes > 0:
-            mode = 'a'
-        self._log_dir = log_dir
-        self._suffix = ".log"
-        self._year_month = datetime.datetime.now().strftime("%Y-%m")
-        self.store_dir = os.path.join(self._log_dir, self._year_month)
-        self._create_new_stream_if_not_exists(self.store_dir, open_stream=False)
-        self.filename = datetime.datetime.now().strftime("%Y-%m-%d")
-        filename = os.path.join(self.store_dir, self.filename) + self._suffix
-        BaseRotatingHandler.__init__(self, filename,
-                                     mode, encoding, delay)
-        self.max_bytes = max_bytes
-
-    def doRollover(self):
-        year_month = datetime.datetime.now().strftime("%Y-%m")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d")
-
-        if self.stream:
-            self.stream.close()
-            self.stream = None
-
-        if self.filename != filename or self._year_month != year_month:
-            self.baseFilename = self.baseFilename.replace(
-                os.path.join(self._year_month, self.filename),
-                os.path.join(year_month, filename))
-            self.filename = filename
-            self._year_month = year_month
-        else:
-            dfn = self.rotation_filename(
-                self.baseFilename.replace(
-                    self._suffix,
-                    '-' + datetime.datetime.now().strftime("%H-%M-%S") + self._suffix
+    @classmethod
+    def select_by_conditions(cls, **kwargs) -> list:
+        """
+        根据条件筛选日志，条件的可以是所有表内字段，以及start, end 时间段，keyword模糊匹配message字段
+        """
+        conditions = dict()
+        # 过滤 传入参数
+        avaliable_keys = [c for c in vars(Log).keys() if not c.startswith("_")] + [
+            "start",
+            "end",
+            "keyword",
+        ]
+        for key, value in kwargs.items():
+            if key in avaliable_keys:
+                conditions[key] = value
+        query = cls.query.filter_by(soft=True)
+        # 搜索特殊字段
+        if conditions.get("start"):
+            query = query.filter(cls.create_time > conditions.get("start"))
+            del conditions["start"]
+        if conditions.get("end"):
+            query = query.filter(cls.create_time < conditions.get("end"))
+            del conditions["end"]
+        if conditions.get("keyword"):
+            query = query.filter(
+                cls.message.like(
+                    "%{keyword}%".format(keyword=conditions.get("keyword"))
                 )
             )
-            if os.path.exists(dfn):
-                os.remove(dfn)
-            self.rotate(self.baseFilename, dfn)
-        if not self.delay:
-            self.stream = self._open()
+            del conditions["keyword"]
+        # 搜索表内字段
+        query = (
+            query.filter_by(**conditions)
+            .group_by(cls.create_time)
+            .order_by(cls.create_time.desc())
+        )
+        logs = query.all()
+        return logs
 
-    def shouldRollover(self, record):
-        year_month = datetime.datetime.now().strftime("%Y-%m")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d")
-        self._create_new_stream_if_not_exists(os.path.join(self._log_dir, year_month))
-        if self.stream is None:
-            self.stream = self._open()
-        if self._year_month != year_month or self.filename != filename:
-            return 1
-        if self.max_bytes > 0:
-            msg = "%s\n" % self.format(record)
-            self.stream.seek(0, 2)
-            if self.stream.tell() + len(msg) >= self.max_bytes:
-                return 1
-        return 0
+    @classmethod
+    def get_usernames(cls) -> list:
+        result = (
+            db.session.query(cls.username)
+            .filter(cls.delete_time == None)
+            .group_by(cls.username)
+            .having(func.count(cls.username) > 0)
+        )
+        # [(‘张三',),('李四',),...] -> ['张三','李四',...]
+        usernames = [x[0] for x in result.all()]
+        return usernames
 
-    def _create_new_stream_if_not_exists(self, store_dir, open_stream=True):
-        if not os.path.exists(store_dir):
-            os.makedirs(store_dir)
-            if open_stream:
-                self.stream = self._open()
+    @staticmethod
+    def create_log(**kwargs):
+        log = Log()
+        for key in kwargs.keys():
+            if hasattr(log, key):
+                setattr(log, key, kwargs[key])
+        db.session.add(log)
+        if kwargs.get("commit") is True:
+            db.session.commit()
+        return log
+
+
+REG_XP = r"[{](.*?)[}]"
+OBJECTS = ["user", "response", "request"]
+
+
+class Logger(object):
+    """
+    用户行为日志记录器
+    """
+
+    # message template
+    template = None
+
+    def __init__(self, template=None):
+        if template:
+            self.template: str = template
+        elif self.template is None:
+            raise Exception("template must not be None!")
+        self.message = ""
+        self.response = None
+        self.user = None
+
+    def __call__(self, func):
+        @wraps(func)
+        def wrap(*args, **kwargs):
+            response: Response = func(*args, **kwargs)
+            self.response = response
+            self.user = get_current_user()
+            if not self.user:
+                raise Exception("Logger must be used in the login state")
+            self.message = self._parse_template()
+            self.write_log()
+            return response
+
+        return wrap
+
+    def write_log(self):
+        info = find_info_by_ep(request.endpoint)
+        permission = info.name if info is not None else ""
+        status_code = getattr(self.response, "status_code", None)
+        if status_code is None:
+            status_code = getattr(self.response, "code", None)
+        if status_code is None:
+            status_code = 0
+        Log.create_log(
+            message=self.message,
+            user_id=self.user.id,
+            username=self.user.username,
+            status_code=status_code,
+            method=request.method,
+            path=request.path,
+            permission=permission,
+            commit=True,
+        )
+
+    # 解析自定义模板
+    def _parse_template(self):
+        message = self.template
+        total = re.findall(REG_XP, message)
+        for it in total:
+            assert "." in it, "%s中必须包含 . ,且为一个" % it
+            i = it.rindex(".")
+            obj = it[:i]
+            assert obj in OBJECTS, "%s只能为user,response,request中的一个" % obj
+            prop = it[i + 1 :]
+            if obj == "user":
+                item = getattr(self.user, prop, "")
+            elif obj == "response":
+                item = getattr(self.response, prop, "")
+            else:
+                item = getattr(request, prop, "")
+            message = message.replace("{%s}" % it, str(item))
+        return message
