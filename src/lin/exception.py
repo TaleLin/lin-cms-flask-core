@@ -145,11 +145,7 @@ class ParameterError(APIException):
 
 class DocParameterError(APIException):
     code = 400
-    message = {
-        "parameter": [
-            "validation error info",
-        ]
-    }
+    message = {"parameter": ["validation error info",]}
     message_code = 10030
     _config = False
 

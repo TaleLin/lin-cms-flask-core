@@ -39,8 +39,7 @@ class SpecTree(_SpecTree):
         :param before: :meth:`spectree.utils.default_before_handler` for specific endpoint
         :param after: :meth:`spectree.utils.default_after_handler` for specific endpoint
         """
-
-        resp_schema = resp.r
+        resp_schema = resp.r if resp else None
 
         def decorate_validation(func):
             @wraps(func)
@@ -122,10 +121,7 @@ class SpecTree(_SpecTree):
 
 
 doc_conf = dict(
-    backend_name="flask",
-    title="Lin-CMS API",
-    mode="strict",
-    version="0.3.0a8",
+    backend_name="flask", title="Lin-CMS API", mode="strict", version="0.3.0a10",
 )
 if os.getenv("FLASK_ENV", "production") == "production":
     # spectree 暂未提供关闭文档功能，production部署变更随机Url

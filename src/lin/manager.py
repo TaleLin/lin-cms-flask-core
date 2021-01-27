@@ -73,10 +73,7 @@ class Manager(object):
         """
         query = (
             db.session.query(self.user_group_model.group_id)
-            .join(
-                self.user_model,
-                self.user_model.id == self.user_group_model.user_id,
-            )
+            .join(self.user_model, self.user_model.id == self.user_group_model.user_id,)
             .filter(self.user_model.delete_time == None, self.user_model.id == user_id)
         )
         result = (
