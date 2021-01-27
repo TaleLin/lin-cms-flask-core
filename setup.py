@@ -27,12 +27,13 @@ setuptools.setup(
     zip_safe=False,
     platforms="any",
     install_requires=[
-        "WTForms==2.3.3",
         "Flask==1.1.2",
         "Flask_JWT_Extended==3.25.0",
         "SQLAlchemy==1.3.20",
         "Flask_SQLAlchemy==2.4.4",
+        "WTForms==2.3.3",
         "tablib==3.0.0",
+        "simplejson==3.17.2",
         "spectree==0.3.16",
     ],
     classifiers=[
