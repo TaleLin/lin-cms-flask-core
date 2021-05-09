@@ -21,7 +21,7 @@ from .jwt import jwt
 from .manager import Manager
 from .syslogger import SysLogger
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 # 路由函数的权限和模块信息(meta信息)
 Meta = namedtuple("meta", ["name", "module", "mount"])
 

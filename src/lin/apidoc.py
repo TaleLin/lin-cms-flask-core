@@ -121,7 +121,7 @@ class SpecTree(_SpecTree):
 
 
 doc_conf = dict(
-    backend_name="flask", title="Lin-CMS API", mode="strict", version="0.3.0a10",
+    backend_name="flask", title="Lin-CMS API", mode="strict", version="0.3.1",
 )
 if os.getenv("FLASK_ENV", "production") == "production":
     # spectree 暂未提供关闭文档功能，production部署变更随机Url
