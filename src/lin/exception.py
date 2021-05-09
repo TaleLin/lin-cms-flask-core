@@ -90,7 +90,7 @@ class APIException(HTTPException, metaclass=MultipleMeta):
 
 
 class Success(APIException):
-    code = 201
+    code = 200
     message = "OK"
     message_code = 0
 
@@ -102,13 +102,13 @@ class Created(APIException):
 
 
 class Updated(APIException):
-    code = 201
+    code = 200
     message = "Updated"
     message_code = 2
 
 
 class Deleted(APIException):
-    code = 201
+    code = 200
     message = "Deleted"
     message_code = 3
 
