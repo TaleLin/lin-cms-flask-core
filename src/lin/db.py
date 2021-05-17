@@ -44,6 +44,8 @@ class MixinJSONSerializer:
         return self
 
     def keys(self):
+        if not hasattr(self, "_fields"):
+            self.init_on_load()
         return self._fields
 
     def __getitem__(self, key):
