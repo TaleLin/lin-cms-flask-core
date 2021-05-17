@@ -28,6 +28,7 @@ setuptools.setup(
     platforms="any",
     install_requires=[
         "Flask==1.1.2",
+        "Werkzeug==1.0.1",
         "Flask_JWT_Extended==3.25.0",
         "SQLAlchemy==1.3.20",
         "Flask_SQLAlchemy==2.4.4",
