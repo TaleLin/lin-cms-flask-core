@@ -8,11 +8,10 @@
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
-import os
 from datetime import datetime
 
-from flask import current_app
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Index,
@@ -22,12 +21,9 @@ from sqlalchemy import (
     func,
     text,
 )
-from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import manager
 from .db import MixinJSONSerializer, db
 from .enums import GroupLevelEnum
-from .exception import NotFound, ParameterError, UnAuthentication
 from .utils import camel2line
 
 
@@ -84,6 +80,8 @@ class BaseCrud(db.Model, MixinJSONSerializer):
 
 
 # 提供软删除，及创建时间，更新时间信息的crud model
+
+
 class InfoCrud(db.Model, MixinJSONSerializer):
     __abstract__ = True
     create_time = Column(DateTime(timezone=True), server_default=func.now())
@@ -91,6 +89,7 @@ class InfoCrud(db.Model, MixinJSONSerializer):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     delete_time = Column(DateTime(timezone=True))
+    is_deleted = Column(Boolean, nullable=False, default=False)
 
     def __init__(self):
         name: str = self.__class__.__name__
@@ -98,7 +97,7 @@ class InfoCrud(db.Model, MixinJSONSerializer):
             self.__tablename__ = camel2line(name)
 
     def _set_fields(self):
-        self._exclude = ["delete_time"]
+        self._exclude = ["delete_time", "is_deleted"]
 
     def set_attrs(self, attrs_dict):
         for key, value in attrs_dict.items():
@@ -108,6 +107,7 @@ class InfoCrud(db.Model, MixinJSONSerializer):
     # 软删除
     def delete(self, commit=False):
         self.delete_time = datetime.now()
+        self.is_deleted = True
         db.session.add(self)
         # 提交会话
         if commit:
@@ -123,8 +123,8 @@ class InfoCrud(db.Model, MixinJSONSerializer):
     @classmethod
     def get(cls, start=None, count=None, one=True, **kwargs):
         # 应用软删除，必须带有delete_time
-        if kwargs.get("delete_time") is None:
-            kwargs["delete_time"] = None
+        if kwargs.get("is_deleted") is None:
+            kwargs["is_deleted"] = False
         if one:
             return cls.query.filter().filter_by(**kwargs).first()
         return cls.query.filter().filter_by(**kwargs).offset(start).limit(count).all()
@@ -159,7 +159,7 @@ class InfoCrud(db.Model, MixinJSONSerializer):
 
 class GroupInterface(InfoCrud):
     __tablename__ = "lin_group"
-    __table_args__ = (Index("name_del", "name", "delete_time", unique=True),)
+    __table_args__ = (Index("name_del", "name", "is_deleted", unique=True),)
 
     id = Column(Integer(), primary_key=True)
     name = Column(String(60), nullable=False, comment="分组名称，例如：搬砖者")
@@ -200,8 +200,8 @@ class PermissionInterface(InfoCrud):
 class UserInterface(InfoCrud):
     __tablename__ = "lin_user"
     __table_args__ = (
-        Index("username_del", "username", "delete_time", unique=True),
-        Index("email_del", "email", "delete_time", unique=True),
+        Index("username_del", "username", "is_deleted", unique=True),
+        Index("email_del", "email", "is_deleted", unique=True),
     )
 
     id = Column(Integer(), primary_key=True)

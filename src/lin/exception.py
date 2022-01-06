@@ -4,10 +4,7 @@
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
-from typing import Union
-
 from flask import json, request
-from werkzeug._compat import text_type
 from werkzeug.exceptions import HTTPException
 
 from .config import global_config
@@ -70,14 +67,14 @@ class APIException(HTTPException, metaclass=MultipleMeta):
         self.headers = headers_merged
         return self
 
-    def get_body(self, environ=None):
+    def get_body(self, environ=None, scope=None):
         body = dict(
             message=self.message,
             code=self.message_code,
             request=request.method + "  " + self.get_url_no_param(),
         )
         text = json.dumps(body)
-        return text_type(text)
+        return text
 
     @staticmethod
     def get_url_no_param():
@@ -85,7 +82,7 @@ class APIException(HTTPException, metaclass=MultipleMeta):
         main_path = full_path.split("?")
         return main_path[0]
 
-    def get_headers(self, environ=None):
+    def get_headers(self, environ=None, scope=None):
         return [(k, v) for k, v in self.headers.items()]
 
 
@@ -141,13 +138,6 @@ class ParameterError(APIException):
     code = 400
     message = "Parameters Error"
     message_code = 10030
-
-
-class DocParameterError(APIException):
-    code = 400
-    message = {"parameter": ["validation error info",]}
-    message_code = 10030
-    _config = False
 
 
 class TokenInvalid(APIException):

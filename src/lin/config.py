@@ -34,7 +34,7 @@ class Config(defaultdict):
         return plugin_conf.get(key, default)
 
     def get_config(self, key: str, default=None):
-        """ plugin_name.key """
+        """plugin_name.key"""
         if "." not in key:
             return self.get(key, default)
         index = key.rindex(".")

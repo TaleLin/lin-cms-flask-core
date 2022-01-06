@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Iterable
 
-import simplejson as json
-from flask import jsonify
+from flask import json, jsonify
 from flask.json import JSONEncoder as _JSONEncoder
 from flask.wrappers import Response
 
@@ -22,8 +22,10 @@ class JSONEncoder(_JSONEncoder):
             ):
                 return o.__root__
             return o.dict()
-        if isinstance(o, (int, list, set, tuple)):
+        if isinstance(o, (int, float, list, set, tuple)):
             return json.dumps(o, cls=JSONEncoder)
+        if isinstance(o, bytes):
+            return o.decode("utf8")
         if isinstance(o, datetime):
             return o.strftime("%Y-%m-%dT%H:%M:%SZ")
         if isinstance(o, date):
@@ -34,8 +36,10 @@ class JSONEncoder(_JSONEncoder):
             return o.as_dict()
         if isinstance(o, Decimal):
             return json.dumps(o, use_decimal=True)
+        if isinstance(o, Iterable):
+            return list(o)
         if isinstance(o, complex):
-            return json.dumps(o, default=encode_complex)
+            return f"{o.real}+{o.imag}j"
         if hasattr(o, "keys") and hasattr(o, "__getitem__"):
             return dict(o)
         return JSONEncoder.default(self, o)
@@ -43,10 +47,10 @@ class JSONEncoder(_JSONEncoder):
 
 def auto_response(func):
     def make_lin_response(o):
-        if (
-            isinstance(o, (RecordCollection, Record, BaseModel))
+        if not isinstance(o, str) and (
+            isinstance(o, (RecordCollection, Record, BaseModel, Iterable))
             or (hasattr(o, "keys") and hasattr(o, "__getitem__"))
-            or isinstance(o, (int, list, set, complex, Decimal, Enum))
+            or isinstance(o, (int, float, list, set, complex, Decimal, Enum))
         ):
             o = jsonify(o)
         elif isinstance(o, tuple) and not isinstance(o[0], (Response, str)):

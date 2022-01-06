@@ -1,4 +1,3 @@
-'''
 """
     MultipleMeta of Lin
     ~~~~~~~~~
@@ -6,9 +5,6 @@
     :copyright: © 2020 by the Lin team.
     :license: MIT, see LICENSE for more details.
 """
-'''
-
-
 import inspect
 import types
 
@@ -16,40 +12,37 @@ __all__ = ["MultipleMeta"]
 
 
 class MultiMethod:
-    """
-    Represents a single multimethod.
-    """
-
     def __init__(self, name):
         self._methods = {}
         self.__name__ = name
 
     def register(self, meth):
         """
-        Register a new method as a multimethod
+        根据方法参数类型注册一个新方法
         """
         sig = inspect.signature(meth)
 
-        # Build a type signature from the method's annotations
+        # 用于保存方法参数的类型
         types = []
         for name, parm in sig.parameters.items():
+            # 忽略self
             if name == "self":
                 continue
             if parm.annotation is inspect.Parameter.empty:
-                raise TypeError(
-                    "Argument {} must be annotated with a type".format(name)
-                )
+                raise TypeError("参数 {} 必须使用类型注释".format(name))
             if not isinstance(parm.annotation, type):
-                raise TypeError("Argument {} annotation must be a type".format(name))
+                raise TypeError("参数 {} 的注解必须是数据类型".format(name))
             if parm.default is not inspect.Parameter.empty:
                 self._methods[tuple(types)] = meth
             types.append(parm.annotation)
 
         self._methods[tuple(types)] = meth
 
+    # 当调用MyOverload类中的某个方法时，会执行__call__方法，在该方法中通过参数类型注解检测具体的方法实例，然后调用并返回执行结果
+
     def __call__(self, *args):
         """
-        Call a method based on type signature of the arguments
+        使用新的标识表用方法
         """
         types = tuple(type(arg) for arg in args[1:])
         meth = self._methods.get(types, None)
@@ -59,9 +52,6 @@ class MultiMethod:
             raise TypeError("No matching method for types {}".format(types))
 
     def __get__(self, instance, cls):
-        """
-        Descriptor method needed to make calls work in a class
-        """
         if instance is not None:
             return types.MethodType(self, instance)
         else:
@@ -69,13 +59,9 @@ class MultiMethod:
 
 
 class MultiDict(dict):
-    """
-    Special dictionary to build multimethods in a metaclass
-    """
-
     def __setitem__(self, key, value):
         if key in self:
-            # If key already exists, it must be a multimethod or callable
+            # 如果key存在, 一定是MultiMethod类型或可调用的方法
             current_value = self[key]
             if isinstance(current_value, MultiMethod):
                 current_value.register(value)
@@ -89,10 +75,7 @@ class MultiDict(dict):
 
 
 class MultipleMeta(type):
-    """
-    Metaclass that allows multiple dispatch of methods
-    """
-
+    # 任何类只要使用MultileMeta，就可以支持方法重载
     def __new__(cls, clsname, bases, clsdict):
         return type.__new__(cls, clsname, bases, dict(clsdict))
 

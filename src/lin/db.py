@@ -33,7 +33,7 @@ class MixinJSONSerializer:
         pass
 
     def __prune_fields(self):
-        columns = inspect(self.__class__).columns
+        columns = inspect(self.__class__).columns  # type: ignore
         if not self._fields:
             all_columns = set([column.name for column in columns])
             self._fields = list(all_columns - set(self._exclude))
@@ -486,7 +486,7 @@ class Query(BaseQuery):
     def filter_by(self, soft=False, **kwargs):
         # soft 应用软删除
         if soft:
-            kwargs["delete_time"] = None
+            kwargs["is_deleted"] = False
         return super(Query, self).filter_by(**kwargs)
 
     def get_or_404(self, ident):
@@ -540,7 +540,7 @@ def _reduce_datetimes(row):
 def get_total_nums(cls, is_soft=False, **kwargs):
     nums = db.session.query(func.count(cls.id))
     nums = (
-        nums.filter(cls.delete_time == None).filter_by(**kwargs).scalar()
+        nums.filter(cls.is_deleted == False).filter_by(**kwargs).scalar()
         if is_soft
         else nums.filter().scalar()
     )

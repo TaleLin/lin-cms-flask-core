@@ -14,6 +14,7 @@ import random
 import re
 import time
 import types
+from collections import namedtuple
 from importlib import import_module
 
 
@@ -99,3 +100,41 @@ def get_random_str(length):
         sa.append(random.choice(seed))
     salt = "".join(sa)
     return salt
+
+
+# 路由函数的权限和模块信息(meta信息)
+Meta = namedtuple("meta", ["name", "module", "mount"])
+
+#       -> endpoint -> func
+# permission                      -> module
+#       -> endpoint -> func
+
+# 记录路由函数的权限和模块信息
+permission_meta_infos = {}
+
+
+def permission_meta(name, module="common", mount=True):
+    """
+    记录路由函数的信息
+    记录路由函数访问的推送信息模板
+    注：只有使用了 permission_meta 装饰器的函数才会被记录到权限管理的map中
+    :param name: 权限名称
+    :param module: 所属模块
+    :param mount: 是否挂在到权限中（一些视图函数需要说明，或暂时决定不挂在到权限中，则设置为False）
+    :return:
+    """
+
+    def wrapper(func):
+        func_name = func.__name__ + str(func.__hash__())
+        existed = (
+            permission_meta_infos.get(func_name, None)
+            and permission_meta_infos.get(func_name).module == module
+        )
+        if existed:
+            raise Exception("func_name cant't be repeat in a same module")
+        else:
+            permission_meta_infos.setdefault(func_name, Meta(name, module, mount))
+
+        return func
+
+    return wrapper

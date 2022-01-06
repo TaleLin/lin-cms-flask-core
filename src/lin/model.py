@@ -1,7 +1,7 @@
 import os
 
 from flask import current_app
-from sqlalchemy import Column, Index, Integer, SmallInteger, String, func, text
+from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import manager
@@ -22,7 +22,7 @@ class Group(GroupInterface):
     @classmethod
     def count_by_id(cls, id) -> int:
         result = db.session.query(func.count(cls.id)).filter(
-            cls.id == id, cls.delete_time == None
+            cls.id == id, cls.is_deleted == False
         )
         count = result.scalar()
         return count
@@ -53,7 +53,7 @@ class User(UserInterface):
     @classmethod
     def count_by_id(cls, uid) -> int:
         result = db.session.query(func.count(cls.id)).filter(
-            cls.id == uid, cls.delete_time == None
+            cls.id == uid, cls.is_deleted == False
         )
         count = result.scalar()
         return count
@@ -107,7 +107,7 @@ class User(UserInterface):
     @classmethod
     def verify(cls, username, password):
         user = cls.query.filter_by(username=username).first()
-        if user is None or user.delete_time is not None:
+        if user is None or user.is_deleted:
             raise NotFound("用户不存在")
         if not user.check_password(password):
             raise ParameterError("密码错误，请输入正确密码")
