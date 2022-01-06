@@ -1,16 +1,46 @@
-import os
+import typing as t
 from functools import wraps
-from uuid import uuid4
 
-from flask import g, json
+from flask import Flask, current_app, g, json, jsonify, make_response
 from pydantic import BaseModel as _BaseModel
-from pydantic.main import Any, object_setattr, validate_model
+from pydantic.main import object_setattr, validate_model
 from spectree import Response as _Response
 from spectree import SpecTree as _SpecTree
+from spectree.response import DEFAULT_CODE_DESC, OptionalModelType
 
-from .config import global_config
 from .db import Record, RecordCollection
-from .exception import DocParameterError, ParameterError
+from .exception import ParameterError
+from .utils import camel2line
+
+
+class ValidationError(_BaseModel):
+    message: dict = {
+        "parameter": [
+            "validation error message",
+        ]
+    }
+    code: int = 10030
+
+
+class BaseModel(_BaseModel):
+    class Config:
+        allow_population_by_field_name = True
+
+    # Uses something other than `self` the first arg to allow "self" as a settable attribute
+    def __init__(__pydantic_self__, **data: t.Any) -> None:  # type: ignore
+        values, fields_set, validation_error = validate_model(
+            __pydantic_self__.__class__, data
+        )
+        if validation_error:
+            raise ParameterError({i["loc"][-1]: [i["msg"]] for i in validation_error.errors()})  # type: ignore
+        try:
+            object_setattr(__pydantic_self__, "__dict__", values)
+        except TypeError as e:
+            raise TypeError(
+                "Model values must be a dict; you may not have returned a dictionary from a root validator"
+            ) from e
+        object_setattr(__pydantic_self__, "__fields_set__", fields_set)
+        __pydantic_self__._init_private_attributes()
 
 
 class SpecTree(_SpecTree):
@@ -22,54 +52,73 @@ class SpecTree(_SpecTree):
         cookies=None,
         resp=None,
         tags=(),
+        security=None,
+        deprecated=False,
         before=None,
         after=None,
+        validation_error_status=None,
+        path_parameter_descriptions=None,
     ):
         """
         - validate query, json, headers in request
         - validate response body and status code
         - add tags to this API route
 
-        :param query: `pydantic.BaseModel`, query in uri like `?name=value`
-        :param json: `pydantic.BaseModel`, JSON format request body
-        :param headers: `pydantic.BaseModel`, if you have specific headers
-        :param cookies: `pydantic.BaseModel`, if you have cookies for this route
-        :param resp: `spectree.Response`
-        :param tags: a tuple of tags string
-        :param before: :meth:`spectree.utils.default_before_handler` for specific endpoint
-        :param after: :meth:`spectree.utils.default_after_handler` for specific endpoint
+        :param query: query in uri like `?name=value`
+        :param json:  JSON format request body
+        :param headers: if you have specific headers
+        :param cookies: if you have cookies for this route
+        :param resp: DocResponse object
+        :param tags: a tuple of strings or :class:`spectree.models.Tag`
+        :param security: dict with security config for current route and method
+        :param deprecated: bool if endpoint is marked as deprecated
+        :param before: :meth:`spectree.utils.default_before_handler` for
+            specific endpoint
+        :param after: :meth:`spectree.utils.default_after_handler` for
+            specific endpoint
+        :param validation_error_status: The response status code to use for the
+            specific endpoint, in the event of a validation error. If not specified,
+            the global `validation_error_status` is used instead, defined
+            in :meth:`spectree.spec.SpecTree`.
+        :param path_parameter_descriptions: A dictionary of path parameter names and
+            their description.
         """
+        if not validation_error_status:
+            validation_error_status = self.validation_error_status
+
         resp_schema = resp.r if resp else None
+
+        def lin_before(req, resp, req_validation_error, instance):
+            g._resp_schema = resp_schema
+            if before:
+                before(req, resp, req_validation_error, instance)
+            schemas = ["headers", "cookies", "query", "json"]
+            for schema in schemas:
+                params = getattr(req.context, schema)
+                if params:
+                    for k, v in params:
+                        # 检测参数命名是否存在冲突，冲突则抛出要求重新命名的ParameterError
+                        if hasattr(g, k) or hasattr(g, camel2line(k)):
+                            raise ParameterError(
+                                {
+                                    k: f"This parameter in { schema.capitalize() } needs to be renamed"
+                                }
+                            )  # type: ignore
+                        # 将参数设置到g中，以便后续使用
+                        setattr(g, k, v)
+                        # 将参数设置到g中，同时将参数名转换为下划线格式
+                        setattr(g, camel2line(k), v)
+
+        def lin_after(req, resp, resp_validation_error, instance):
+            # global after handler here
+            if after:
+                after(req, resp, resp_validation_error, instance)
+            elif self.after:
+                self.after(req, resp, resp_validation_error, instance)
 
         def decorate_validation(func):
             @wraps(func)
             def validation(*args, **kwargs):
-                def lin_before(req, resp, req_validation_error, instance):
-                    g._resp_schema = resp_schema
-                    if before:
-                        before(req, resp, req_validation_error, instance)
-                    schemas = ["headers", "cookies", "query", "json"]
-                    for schema in schemas:
-                        params = getattr(req.context, schema)
-                        if params:
-                            for k, v in params:
-                                if hasattr(g, k):
-                                    raise ParameterError(
-                                        {
-                                            k: "This parameter in {schema} needs to be renamed".format(
-                                                schema=schema.capitalize()
-                                            )
-                                        }
-                                    )
-                                setattr(g, k, v)
-
-                def lin_after(req, resp, req_validation_error, instance):
-                    # global after handler here
-                    if after:
-                        after(req, resp, req_validation_error, instance)
-                    elif self.after:
-                        self.after(req, resp, req_validation_error, instance)
-
                 return self.backend.validate(
                     func,
                     query,
@@ -79,54 +128,47 @@ class SpecTree(_SpecTree):
                     resp,
                     lin_before,
                     lin_after,
+                    validation_error_status,
                     *args,
                     **kwargs,
                 )
 
+            if self.config.ANNOTATIONS:
+                nonlocal query
+                query = func.__annotations__.get("query", query)
+                nonlocal json
+                json = func.__annotations__.get("json", json)
+                nonlocal headers
+                headers = func.__annotations__.get("headers", headers)
+                nonlocal cookies
+                cookies = func.__annotations__.get("cookies", cookies)
+
             # register
+
             for name, model in zip(
                 ("query", "json", "headers", "cookies"), (query, json, headers, cookies)
             ):
                 if model is not None:
-                    assert issubclass(model, BaseModel)
-                    self.models[model.__name__] = model.schema(
-                        ref_template="#/components/schemas/{model}"
-                    )
-                    setattr(validation, name, model.__name__)
+                    model_key = self._add_model(model=model)
+                    setattr(validation, name, model_key)
 
             if resp:
-                if query or json or headers or cookies:
-                    resp.code_models[DocParameterError.code] = type(
-                        "DocParameterErrorSchema",
-                        (BaseModel,),
-                        dict(
-                            code=DocParameterError.message_code,
-                            message=DocParameterError.message,
-                        ),
-                    )
+                resp.add_model(validation_error_status, ValidationError, replace=False)
                 for model in resp.models:
-                    self.models[model.__name__] = model.schema(
-                        ref_template="#/components/schemas/{model}"
-                    )
+                    self._add_model(model=model)
                 validation.resp = resp
 
             if tags:
                 validation.tags = tags
 
+            validation.security = security
+            validation.deprecated = deprecated
+            validation.path_parameter_descriptions = path_parameter_descriptions
             # register decorator
             validation._decorator = self
             return validation
 
         return decorate_validation
-
-
-doc_conf = dict(
-    backend_name="flask", title="Lin-CMS API", mode="strict", version="0.3.1",
-)
-if os.getenv("FLASK_ENV", "production") == "production":
-    # spectree 暂未提供关闭文档功能，production部署变更随机Url
-    doc_conf.update({"path": "/".join(str(uuid4()).split("-"))})
-api = SpecTree(**doc_conf)
 
 
 class DocResponse(_Response):
@@ -136,9 +178,23 @@ class DocResponse(_Response):
     :param args: subclass/object of APIException or obj/dict with code message_code message or None
     """
 
-    def __init__(self, *args, r=None):
-        self.code_models = dict()
+    def __init__(
+        self,
+        *args: t.Any,
+        r=None,
+        **code_models: t.Union[OptionalModelType, t.Tuple[OptionalModelType, str]],
+    ) -> None:
+        # 初始化 self
+        self.codes = []  # 重写功能后此属性无用，只是防止报错
+        self.code_models: t.Dict[str, t.Type[BaseModel]] = {}
+        self.code_descriptions: t.Dict[str, t.Optional[str]] = {}
+        self.r = r if r else None
+
+        # 将 args 转换后存入code_models
         for arg in args:
+            assert (
+                "HTTP_" + str(arg.code) in DEFAULT_CODE_DESC
+            ), "invalid HTTP status code"
             name = arg.__class__.__name__
             if name == "MultipleMeta":
                 schema_name = arg.__name__ + "Schema"
@@ -149,70 +205,67 @@ class DocResponse(_Response):
                     hashmsg=hash((arg.message)),
                 )
 
-            self.code_models[arg.code] = type(
+            self.code_models["HTTP_" + str(arg.code)] = type(
                 schema_name,
                 (BaseModel,),
                 dict(code=arg.message_code, message=arg.message),
             )
 
-        if r != None:
-            http_status_code = 200
+        # 将 r 转换后存入code_models
+        if r:
+            http_status = "HTTP_200"
             if r.__class__.__name__ == "ModelMetaclass":
-                self.code_models[http_status_code] = r
+                self.code_models[http_status] = r
             elif isinstance(r, dict):
-                from .encoder import JSONEncoder
 
-                response_str = json.dumps(r, cls=JSONEncoder)
+                response_str = json.dumps(r, cls=current_app.json_encoder)
                 r = type("Dict-{}Schema".format(hash(response_str)), (BaseModel,), r)
-                self.code_models[http_status_code] = r
+                self.code_models[http_status] = r
             elif isinstance(r, (RecordCollection, Record)) or (
                 hasattr(r, "keys") and hasattr(r, "__getitem__")
             ):
-                from .encoder import JSONEncoder
 
-                r_str = json.dumps(r, cls=JSONEncoder)
+                r_str = json.dumps(r, cls=current_app.json_encoder)
                 r = json.loads(r_str)
                 r = type("Json{}Schema".format(hash(r_str)), (BaseModel,), r)
-                self.code_models[http_status_code] = r
+                self.code_models[http_status] = r
             self.r = r
-        else:
-            self.r = None
+        for code, model_and_description in code_models.items():
+            assert "HTTP_" + str(code) in DEFAULT_CODE_DESC, "invalid HTTP status code"
+            model = model_and_description
+            description = None
+            if isinstance(model_and_description, tuple):
+                assert len(model_and_description) == 2, (
+                    "unexpected number of arguments for a tuple of "
+                    "`pydantic.BaseModel` and HTTP status code description"
+                )
+                model = model_and_description[0]
+                description: t.Optional[str] = model_and_description[1]
 
-    def find_model(self, code):
-        return self.code_models.get(code)
+            if model:
+                assert issubclass(model, BaseModel), "invalid `pydantic.BaseModel`"
+                assert description is None or isinstance(
+                    description, str
+                ), "invalid HTTP status code description"
+                self.code_models[code] = model
 
-    def generate_spec(self):
-        """
-        generate the spec for responses
-
-        :returns: JSON
-        """
-        responses = {}
-        for code, base_model in self.code_models.items():
-            responses[code] = {
-                "description": global_config.get("DESC", dict()).get(code, "No Desc"),
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": f"#/components/schemas/{base_model.__name__}"
-                        }
-                    }
-                },
-            }
-
-        return responses
+            if description:
+                self.code_descriptions[code] = description
 
 
-class BaseModel(_BaseModel):
-    def __init__(__pydantic_self__, **data: Any) -> None:
-        values, fields_set, validation_error = validate_model(
-            __pydantic_self__.__class__, data
-        )
-        if validation_error:
-            # TODO 收集多个异常
-            raise ParameterError(
-                {i["loc"][-1]: [i["msg"]] for i in validation_error.errors()}
+def schema_response(app: Flask):
+    """
+    根据apidoc中指定的r schema，重新生成对应类型的响应
+    """
+
+    @app.after_request
+    def make_schema_response(response):
+        if (
+            hasattr(g, "_resp_schema")
+            and g._resp_schema
+            and response.status_code == 200
+        ):
+            response = make_response(
+                jsonify(g._resp_schema.parse_obj(response.get_json()))
             )
-        object_setattr(__pydantic_self__, "__dict__", values)
-        object_setattr(__pydantic_self__, "__fields_set__", fields_set)
-        __pydantic_self__._init_private_attributes()
+        return response

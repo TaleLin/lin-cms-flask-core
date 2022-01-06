@@ -9,8 +9,8 @@
 
 <p align="center">
   <a href="http://flask.pocoo.org/docs/1.0/" rel="nofollow">
-  <img src="https://img.shields.io/badge/Flask-1.1.2-brightgreen" alt="Flask version" 
-  data-canonical-src="https://img.shields.io/badge/Flask-1.1.2-brightgreen"
+  <img src="https://img.shields.io/badge/Flask-2.0.2-brightgreen" alt="Flask version" 
+  data-canonical-src="https://img.shields.io/badge/Flask-2.0.2-brightgreen"
   style="max-width:100%;"></a>
   <a href="https://doc.cms.talelin.com/" rel="nofollow"><img src="https://img.shields.io/badge/license-MIT-skyblue.svg" alt="LISENCE" data-canonical-src="https://img.shields.io/badge/license-MIT-skyblue`.svg" style="max-width:100%;"></a>
 </p>
@@ -19,10 +19,6 @@
   <em>Lin-CMS</em> 是林间有风团队经过大量项目实践所提炼出的一套<strong>内容管理系统框架</strong>。<br>
  Lin-CMS 可以有效的帮助开发者提高 CMS 的开发效率。
 </blockquote>
-
-<p align="center">
-  <a href="#简介">简介</a>&nbsp;|&nbsp;<a href="#快速开始">快速开始</a>&nbsp;|&nbsp;<a href="#下个版本开发计划">下个版本开发计划</a>
-</p>
 
 ## 简介
 

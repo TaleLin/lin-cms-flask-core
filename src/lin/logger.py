@@ -14,9 +14,9 @@ from flask import Response, request
 from flask_jwt_extended import get_current_user
 from sqlalchemy import Column, Integer, String, func
 
-from . import find_info_by_ep
 from .db import db
 from .interface import InfoCrud
+from .manager import manager
 
 
 class Log(InfoCrud):
@@ -78,7 +78,7 @@ class Log(InfoCrud):
     def get_usernames(cls) -> list:
         result = (
             db.session.query(cls.username)
-            .filter(cls.delete_time == None)
+            .filter(cls.is_deleted == False)
             .group_by(cls.username)
             .having(func.count(cls.username) > 0)
         )
@@ -134,7 +134,7 @@ class Logger(object):
         return wrap
 
     def write_log(self):
-        info = find_info_by_ep(request.endpoint)
+        info = manager.find_info_by_ep(request.endpoint)
         permission = info.name if info is not None else ""
         status_code = getattr(self.response, "status_code", None)
         if status_code is None:

@@ -71,7 +71,7 @@ class Loader(object):
                 for key in dic.keys():
                     if not key.startswith("_"):
                         default_conf[key] = dic[key]
-        except ModuleNotFoundError as e:
+        except ModuleNotFoundError:
             pass
         default_conf.update(**conf)
         lin_config.add_plugin_config(plugin_name=name, obj=default_conf)

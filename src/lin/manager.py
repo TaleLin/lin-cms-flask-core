@@ -9,13 +9,16 @@
 """
 
 
+from flask import current_app
+from werkzeug.local import LocalProxy
+
 from .db import db
 
-__all__ = ["Manager"]
+__all__ = ["Manager", "manager"]
 
 
 class Manager(object):
-    """ manager for lin """
+    """manager for lin"""
 
     # 路由函数的meta信息的容器
     ep_meta = {}
@@ -50,7 +53,7 @@ class Manager(object):
         return self.group_model.query.filter_by(**kwargs).first()
 
     def get_ep_infos(self):
-        """ 返回权限管理中的所有视图函数的信息，包含它所属module """
+        """返回权限管理中的所有视图函数的信息，包含它所属module"""
         info_list = self.permission_model.query.filter_by(mount=True).all()
         infos = {}
         for permission in info_list:
@@ -63,7 +66,7 @@ class Manager(object):
         return infos
 
     def find_info_by_ep(self, ep):
-        """ 通过请求的endpoint寻找路由函数的meta信息"""
+        """通过请求的endpoint寻找路由函数的meta信息"""
         info = self.ep_meta.get(ep)
         return info if info.mount else None
 
@@ -73,12 +76,15 @@ class Manager(object):
         """
         query = (
             db.session.query(self.user_group_model.group_id)
-            .join(self.user_model, self.user_model.id == self.user_group_model.user_id,)
-            .filter(self.user_model.delete_time == None, self.user_model.id == user_id)
+            .join(
+                self.user_model,
+                self.user_model.id == self.user_group_model.user_id,
+            )
+            .filter(self.user_model.is_deleted == False, self.user_model.id == user_id)
         )
         result = (
             db.session.query(self.group_model.id)
-            .filter(self.group_model.delete_time == None)
+            .filter(self.group_model.is_deleted == False)
             .filter(self.group_model.id.in_(query))
         )
         # [(1,),(2,),...] => [1,2,...]
@@ -106,7 +112,7 @@ class Manager(object):
         return True if permission else False
 
     def find_permission_module(self, name):
-        """ 通过权限寻找meta信息"""
+        """通过权限寻找meta信息"""
         for _, meta in self.ep_meta.items():
             if meta.name == name:
                 return meta
@@ -194,3 +200,21 @@ def _sync_permissions(
         manager.group_permission_model.query.filter(
             manager.group_permission_model.permission_id.in_(deleted_ids)
         ).delete(synchronize_session=False)
+
+
+def get_manager():
+    _manager = current_app.extensions["manager"]
+    if _manager:
+        return _manager
+    else:
+        app = current_app._get_current_object()
+        with app.app_context():
+            return app.extensions["manager"]
+
+
+# a proxy for manager instance
+# attention, only used when context in  stack
+
+# 获得manager实例
+# 注意，仅仅在flask的上下文栈中才可获得
+manager: Manager = LocalProxy(lambda: get_manager())
