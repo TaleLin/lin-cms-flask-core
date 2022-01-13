@@ -192,8 +192,7 @@ class PermissionInterface(InfoCrud):
     id = Column(Integer(), primary_key=True)
     name = Column(String(60), nullable=False, comment="权限名称，例如：访问首页")
     module = Column(String(50), nullable=False, comment="权限所属模块，例如：人员管理")
-    mount = Column(
-        SmallInteger(), nullable=False, server_default=text("1"), comment="0：关闭 1：开启"
+    mount = Column(Boolean, nullable=False, comment="是否为挂载权限")
     )
 
 
@@ -262,7 +261,7 @@ class UserIdentityInterface(InfoCrud):
     user_id = Column(Integer(), nullable=False, comment="用户id")
     identity_type = Column(String(100), nullable=False, comment="认证类型")
     identifier = Column(String(100), comment="标识")
-    credential = Column(String(100), comment="凭证")
+    credential = Column(String(255), comment="凭证")
 
 
 class LinViewModel:
