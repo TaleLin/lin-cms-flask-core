@@ -37,5 +37,3 @@ from .manager import manager
 from .model import Group, GroupPermission, Permission, User, UserGroup, UserIdentity
 from .redprint import Redprint
 from .utils import permission_meta
-
-__version__ = "0.4.1"
