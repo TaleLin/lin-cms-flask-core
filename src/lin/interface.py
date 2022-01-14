@@ -193,7 +193,6 @@ class PermissionInterface(InfoCrud):
     name = Column(String(60), nullable=False, comment="权限名称，例如：访问首页")
     module = Column(String(50), nullable=False, comment="权限所属模块，例如：人员管理")
     mount = Column(Boolean, nullable=False, comment="是否为挂载权限")
-    )
 
 
 class UserInterface(InfoCrud):
