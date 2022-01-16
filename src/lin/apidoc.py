@@ -153,7 +153,10 @@ class SpecTree(_SpecTree):
                     setattr(validation, name, model_key)
 
             if resp:
-                resp.add_model(validation_error_status, ValidationError, replace=False)
+                if query or json or headers or cookies:
+                    resp.add_model(
+                        validation_error_status, ValidationError, replace=False
+                    )
                 for model in resp.models:
                     self._add_model(model=model)
                 validation.resp = resp
