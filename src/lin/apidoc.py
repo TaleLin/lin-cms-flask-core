@@ -14,11 +14,7 @@ from .utils import camel2line
 
 
 class ValidationError(_BaseModel):
-    message: dict = {
-        "parameter": [
-            "validation error message",
-        ]
-    }
+    message: str = "parameter validation error message"
     code: int = 10030
 
 
@@ -32,7 +28,11 @@ class BaseModel(_BaseModel):
             __pydantic_self__.__class__, data
         )
         if validation_error:
-            raise ParameterError({i["loc"][-1]: [i["msg"]] for i in validation_error.errors()})  # type: ignore
+            raise ParameterError(
+                " and ".join(
+                    [f'{i["loc"][0]} {i["msg"]}' for i in validation_error.errors()]
+                )
+            )
         try:
             object_setattr(__pydantic_self__, "__dict__", values)
         except TypeError as e:
@@ -153,7 +153,10 @@ class SpecTree(_SpecTree):
                     setattr(validation, name, model_key)
 
             if resp:
-                resp.add_model(validation_error_status, ValidationError, replace=False)
+                if query or json or headers or cookies:
+                    resp.add_model(
+                        validation_error_status, ValidationError, replace=False
+                    )
                 for model in resp.models:
                     self._add_model(model=model)
                 validation.resp = resp
