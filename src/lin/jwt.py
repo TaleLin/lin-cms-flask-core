@@ -33,7 +33,6 @@ def admin_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        jwt_required()
         current_user = get_current_user()
         if not current_user.is_admin:
             raise UnAuthentication("只有超级管理员可操作")  # type: ignore
@@ -46,7 +45,6 @@ def group_required(fn):
     @wraps(fn)
     @jwt_required()
     def wrapper(*args, **kwargs):
-        jwt_required()
         current_user = get_current_user()
         # check current user is active or not
         # 判断当前用户是否为激活状态
@@ -95,7 +93,7 @@ def user_loader_callback(t, identity):
 
 
 @jwt.expired_token_loader
-def expired_loader_callback():
+def expired_loader_callback(t, identity):
     return TokenExpired(10051)  # type: ignore
 
 
