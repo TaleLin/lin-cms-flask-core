@@ -11,7 +11,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setuptools.setup(
     name="Lin-CMS",
-    version="0.4.5",
+    version="0.4.6",
     url="https://pypi.org/project/Lin-CMS/",
     license="MIT",
     author="pedroGao",
@@ -27,13 +27,12 @@ setuptools.setup(
     zip_safe=False,
     platforms="any",
     install_requires=[
-        "Flask==2.0.2",
+        "Flask==2.0.3",
         "Flask_JWT_Extended==4.3.1",
-        "SQLAlchemy==1.4.29",
         "Flask_SQLAlchemy==2.5.1",
         "WTForms==3.0.1",
-        "tablib==3.1.0",
-        "spectree==0.6.8",
+        "tablib==3.2.0",
+        "spectree==0.7.6",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
