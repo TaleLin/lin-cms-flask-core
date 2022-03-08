@@ -9,8 +9,8 @@
 
 <p align="center">
   <a href="http://flask.pocoo.org/docs/1.0/" rel="nofollow">
-  <img src="https://img.shields.io/badge/Flask-2.0.2-brightgreen" alt="Flask version" 
-  data-canonical-src="https://img.shields.io/badge/Flask-2.0.2-brightgreen"
+  <img src="https://img.shields.io/badge/Flask-2.0.3-brightgreen" alt="Flask version" 
+  data-canonical-src="https://img.shields.io/badge/Flask-2.0.3-brightgreen"
   style="max-width:100%;"></a>
   <a href="https://doc.cms.talelin.com/" rel="nofollow"><img src="https://img.shields.io/badge/license-MIT-skyblue.svg" alt="LISENCE" data-canonical-src="https://img.shields.io/badge/license-MIT-skyblue`.svg" style="max-width:100%;"></a>
 </p>
