@@ -181,7 +181,7 @@ class SpecTree(_SpecTree):
                     **kwargs,
                 )
 
-            if self.config.ANNOTATIONS:
+            if self.config.annotations:
                 nonlocal query
                 query = func.__annotations__.get("query", query)
                 nonlocal json
