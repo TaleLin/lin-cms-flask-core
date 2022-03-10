@@ -247,14 +247,11 @@ class DocResponse(_Response):
                 "HTTP_" + str(arg.code) in DEFAULT_CODE_DESC
             ), "invalid HTTP status code"
             name = arg.__class__.__name__
-            if name == "MultipleMeta":
-                schema_name = arg.__name__ + "Schema"
-            else:
-                schema_name = "{class_name}_{message_code}_{hashmsg}Schema".format(
-                    class_name=name,
-                    message_code=arg.message_code,
-                    hashmsg=hash((arg.message)),
-                )
+            schema_name = "{class_name}_{message_code}_{hashmsg}Schema".format(
+                class_name=name,
+                message_code=arg.message_code,
+                hashmsg=hash((arg.message)),
+            )
 
             self.code_models["HTTP_" + str(arg.code)] = type(
                 schema_name,

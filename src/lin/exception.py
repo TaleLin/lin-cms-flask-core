@@ -8,50 +8,49 @@ from flask import json, request
 from werkzeug.exceptions import HTTPException
 
 from .config import global_config
-from .multiplemeta import MultipleMeta
 
 
-class APIException(HTTPException, metaclass=MultipleMeta):
+class APIException(HTTPException):
     code = 500
     message = "抱歉，服务器未知错误"
     message_code = 9999
     headers = {"Content-Type": "application/json"}
     _config = True
 
-    def __init__(self):
-        if self._config:
-            code_message = global_config.get("MESSAGE", dict())
-            msg = code_message.get(self.message_code)
-            if msg:
-                self.message = msg
-        super(APIException, self).__init__(self.message, None)
-
-    def __init__(self, message_code: int):
-        self.message_code = message_code
-        if self._config:
-            code_message = global_config.get("MESSAGE", dict())
-            msg = code_message.get(self.message_code)
-            if msg:
-                self.message = msg
-        super(APIException, self).__init__(self.message, None)
-
-    def __init__(self, message: str):
-        self.message = message
-        super(APIException, self).__init__(self.message, None)
-
-    def __init__(self, message_code: int, message: str):
-        self.message_code = message_code
-        self.message = message
-        super(APIException, self).__init__(self.message, None)
-
-    def __init__(self, message: dict):
-        self.message = message
-        super(APIException, self).__init__(self.message, None)
-
-    def __init__(self, message_code: int, message: dict):
-        self.message_code = message_code
-        self.message = message
-        super(APIException, self).__init__(self.message, None)
+    def __init__(self, *args):
+        # 1. 没有参数
+        if len(args) == 0:
+            self.message = (
+                global_config.get("MESSAGE", dict()).get(
+                    self.message_code, self.message
+                )
+                if self._config
+                else self.message
+            )
+        # 2.1 一个参数，为数字
+        elif len(args) == 1:
+            if isinstance(args[0], int):
+                self.message_code = args[0]
+                self.message = (
+                    global_config.get("MESSAGE", dict()).get(
+                        self.message_code, self.message
+                    )
+                    if self._config
+                    else self.message
+                )
+            # 2.2. 一个参数，为字符串 or 字典
+            elif isinstance(args[0], (str, dict)):
+                self.message = args[0]
+        # 3. 两个参数， 一个整数，一个字符串 or 字典
+        elif len(args) == 2:
+            if isinstance(args[0], int) and isinstance(args[1], (str, dict)):
+                self.message_code = args[0]
+                self.message = args[1]
+            elif isinstance(args[1], int) and isinstance(args[0], (str, dict)):
+                self.message_code = args[1]
+                self.message = args[0]
+        # 最终都要调用父类方法
+        super().__init__(self.message, None)
 
     def set_code(self, code: int):
         self.code = code
