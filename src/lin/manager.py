@@ -142,14 +142,14 @@ class Manager(object):
             db.create_all()
             permissions = self.permission_model.get(one=False)
             # 新增的权限记录
-            new_added_permissions = list()
+            new_added_permissions: set = set()
             deleted_ids = [permission.id for permission in permissions]
             # mount-> unmount
             unmounted_ids = list()
             # unmount-> mount 的记录
             mounted_ids = list()
             # 用代码中记录的权限比对数据库中的权限
-            for ep, meta in self.ep_meta.items():
+            for _, meta in self.ep_meta.items():
                 name, module, mount = meta
                 # db_existed 判定 代码中的权限是否存在于权限表记录中
                 db_existed = False
@@ -173,7 +173,7 @@ class Manager(object):
                     permission.name = name
                     permission.module = module
                     permission.mount = mount
-                    new_added_permissions.append(permission)
+                    new_added_permissions.add(permission)
             _sync_permissions(
                 self, new_added_permissions, unmounted_ids, mounted_ids, deleted_ids
             )

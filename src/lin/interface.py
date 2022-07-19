@@ -194,6 +194,12 @@ class PermissionInterface(InfoCrud):
     module = Column(String(50), nullable=False, comment="权限所属模块，例如：人员管理")
     mount = Column(Boolean, nullable=False, comment="是否为挂载权限")
 
+    def __hash__(self):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        raise NotImplementedError()
+
 
 class UserInterface(InfoCrud):
     __tablename__ = "lin_user"

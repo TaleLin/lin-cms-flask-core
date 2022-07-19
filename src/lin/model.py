@@ -33,7 +33,16 @@ class GroupPermission(GroupPermissionInterface):
 
 
 class Permission(PermissionInterface):
-    pass
+    def __hash__(self):
+        return hash(self.name + self.module)
+
+    def __eq__(self, other):
+        if self.name == other.name and self.module == other.module:
+            # 如果出现了复用同名权限，则要保证mount=True的权限生效
+            self.mount = self.mount or other.mount
+            return True
+        else:
+            return False
 
 
 class User(UserInterface):
