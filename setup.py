@@ -33,6 +33,7 @@ setuptools.setup(
         "WTForms==3.0.1",
         "tablib==3.2.0",
         "spectree==0.7.6",
+        "SQLAlchemy==1.4.46",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
