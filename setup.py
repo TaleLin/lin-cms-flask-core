@@ -11,7 +11,7 @@ with io.open("README.md", "rt", encoding="utf8") as f:
 
 setuptools.setup(
     name="Lin-CMS",
-    version="0.4.10",
+    version="0.4.11",
     url="https://pypi.org/project/Lin-CMS/",
     license="MIT",
     author="pedroGao",
@@ -34,6 +34,7 @@ setuptools.setup(
         "tablib==3.2.0",
         "spectree==0.7.6",
         "SQLAlchemy==1.4.46",
+        "pydantic==1.9.2",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
