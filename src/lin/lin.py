@@ -74,7 +74,7 @@ class Lin(object):
         if not user_model:
             from .model import User
 
-            self.user_model = User
+            user_model = User
         if not permission_model:
             from .model import Permission
 
